@@ -1,0 +1,267 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+:root {
+  --color-primary: #006a60;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #70f7e9;
+  --color-on-primary-container: #00201d;
+  --color-secondary: #4a635f;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #cce8e3;
+  --color-on-secondary-container: #05201c;
+  --color-tertiary: #456179;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #cce5ff;
+  --color-on-tertiary-container: #001e31;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #410002;
+  --color-background: #f8fafb;
+  --color-on-background: #191c1d;
+  --color-surface: #f8fafb;
+  --color-on-surface: #191c1d;
+  --color-surface-variant: #dae5e1;
+  --color-on-surface-variant: #3f4947;
+  --color-outline: #6f7977;
+  --color-outline-variant: #bec9c6;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f2f4f5;
+  --color-surface-container: #eceef0;
+  --color-surface-container-high: #e6e8ea;
+  --color-surface-container-highest: #e0e3e5;
+  --color-inverse-surface: #2d3131;
+  --color-inverse-on-surface: #eff1f1;
+  --color-inverse-primary: #52dbcc;
+  
+  /* Additional MD3 Colors from user request */
+  --color-on-secondary-fixed: #0d1c2f;
+  --color-on-secondary-container: #57657b;
+  --color-tertiary-fixed: #ffdbce;
+  --color-secondary: #515f74;
+  --color-on-tertiary-container: #fffbff;
+  --color-on-primary-container: #f4fffc;
+  --color-on-primary-fixed-variant: #005049;
+  --color-surface-dim: #d8dadc;
+  --color-on-secondary-fixed-variant: #3a485c;
+  --color-surface-bright: #f7f9fb;
+  --color-on-primary-fixed: #00201d;
+  --color-secondary-container: #d5e3fd;
+  --color-primary-container: #008378;
+  --color-tertiary: #924628;
+  --color-secondary-fixed: #d5e3fd;
+  --color-tertiary-fixed-dim: #ffb59a;
+  --color-tertiary-container: #b05e3d;
+  --color-on-tertiary-fixed-variant: #773215;
+  --color-secondary-fixed-dim: #b9c7e0;
+  --color-on-tertiary-fixed: #370e00;
+  --color-surface-tint: #006a61;
+  --color-primary-fixed: #89f5e7;
+  --color-primary-fixed-dim: #6bd8cb;
+}
+
+.dark {
+  --color-primary: #4db6ac;
+  --color-on-primary: #003732;
+  --color-primary-container: #003732;
+  --color-on-primary-container: #6bd8cb;
+  --color-secondary: #8e9db3;
+  --color-on-secondary: #0a0c0d;
+  --color-secondary-container: #2d3133;
+  --color-on-secondary-container: #b9c7e0;
+  --color-tertiary: #924628;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #561f09;
+  --color-on-tertiary-container: #ffdbce;
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-background: #080a0b;
+  --color-on-background: #c4c7c9;
+  --color-surface: #0f1113;
+  --color-on-surface: #c4c7c9;
+  --color-surface-variant: #2d3133;
+  --color-on-surface-variant: #9ea3a2;
+  --color-outline: #3d4947;
+  --color-outline-variant: #2d3133;
+  --color-surface-container-lowest: #050607;
+  --color-surface-container-low: #121416;
+  --color-surface-container: #141719;
+  --color-surface-container-high: #1c2022;
+  --color-surface-container-highest: #232729;
+  --color-inverse-surface: #e0e3e5;
+  --color-inverse-on-surface: #141719;
+  --color-inverse-primary: #00685f;
+
+  /* Dark mode variants for additional MD3 colors */
+  --color-on-secondary-fixed: #d5e3fd;
+  --color-on-secondary-container: #b9c7e0;
+  --color-tertiary-fixed: #561f09;
+  --color-on-tertiary-container: #ffdbce;
+  --color-surface-dim: #0f1113;
+  --color-surface-bright: #232729;
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-headline: "Manrope", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-primary: var(--color-primary);
+  --color-on-primary: var(--color-on-primary);
+  --color-primary-container: var(--color-primary-container);
+  --color-on-primary-container: var(--color-on-primary-container);
+  --color-secondary: var(--color-secondary);
+  --color-on-secondary: var(--color-on-secondary);
+  --color-secondary-container: var(--color-secondary-container);
+  --color-on-secondary-container: var(--color-on-secondary-container);
+  --color-tertiary: var(--color-tertiary);
+  --color-on-tertiary: var(--color-on-tertiary);
+  --color-tertiary-container: var(--color-tertiary-container);
+  --color-on-tertiary-container: var(--color-on-tertiary-container);
+  --color-error: var(--color-error);
+  --color-on-error: var(--color-on-error);
+  --color-error-container: var(--color-error-container);
+  --color-on-error-container: var(--color-on-error-container);
+  --color-background: var(--color-background);
+  --color-on-background: var(--color-on-background);
+  --color-surface: var(--color-surface);
+  --color-on-surface: var(--color-on-surface);
+  --color-surface-variant: var(--color-surface-variant);
+  --color-on-surface-variant: var(--color-on-surface-variant);
+  --color-outline: var(--color-outline);
+  --color-outline-variant: var(--color-outline-variant);
+  --color-surface-container-lowest: var(--color-surface-container-lowest);
+  --color-surface-container-low: var(--color-surface-container-low);
+  --color-surface-container: var(--color-surface-container);
+  --color-surface-container-high: var(--color-surface-container-high);
+  --color-surface-container-highest: var(--color-surface-container-highest);
+  --color-inverse-surface: var(--color-inverse-surface);
+  --color-inverse-on-surface: var(--color-inverse-on-surface);
+  --color-inverse-primary: var(--color-inverse-primary);
+
+  --color-on-secondary-fixed: var(--color-on-secondary-fixed);
+  --color-on-secondary-container: var(--color-on-secondary-container);
+  --color-tertiary-fixed: var(--color-tertiary-fixed);
+  --color-tertiary-fixed-dim: var(--color-tertiary-fixed-dim);
+  --color-tertiary-container: var(--color-tertiary-container);
+  --color-on-tertiary-container: var(--color-on-tertiary-container);
+  --color-on-tertiary-fixed-variant: var(--color-on-tertiary-fixed-variant);
+  --color-on-tertiary-fixed: var(--color-on-tertiary-fixed);
+  --color-secondary-fixed: var(--color-secondary-fixed);
+  --color-secondary-fixed-dim: var(--color-secondary-fixed-dim);
+  --color-surface-dim: var(--color-surface-dim);
+  --color-surface-bright: var(--color-surface-bright);
+  --color-on-primary-fixed: var(--color-on-primary-fixed);
+  --color-on-primary-fixed-variant: var(--color-on-primary-fixed-variant);
+  --color-primary-fixed: var(--color-primary-fixed);
+  --color-primary-fixed-dim: var(--color-primary-fixed-dim);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on-surface font-sans antialiased;
+  }
+}
+
+.glass-panel {
+  @apply bg-surface/30 backdrop-blur-2xl border border-outline-variant/10 shadow-2xl;
+}
+
+.sharp-card {
+  @apply bg-surface-container border-t border-white/5 border-l border-white/5 border-r-black/10 border-b-black/20 dark:border-r-black/40 dark:border-b-black/60 rounded-sm transition-all duration-300;
+  background-image: linear-gradient(145deg, rgba(255,255,255,0.02) 0%, transparent 100%);
+  box-shadow: 
+    4px 4px 12px rgba(0, 0, 0, 0.08),
+    -2px -2px 8px rgba(255, 255, 255, 0.5);
+}
+
+.dark .sharp-card {
+  box-shadow: 
+    8px 8px 16px rgba(0, 0, 0, 0.4),
+    -2px -2px 8px rgba(255, 255, 255, 0.01);
+}
+
+.sharp-card:hover {
+  @apply border-primary/20;
+  box-shadow: 
+    8px 8px 20px rgba(0, 0, 0, 0.12),
+    -2px -2px 12px rgba(255, 255, 255, 0.6);
+  transform: translate(-1px, -1px);
+}
+
+.dark .sharp-card:hover {
+  box-shadow: 
+    12px 12px 24px rgba(0, 0, 0, 0.5),
+    -2px -2px 12px rgba(255, 255, 255, 0.02);
+}
+
+.sharp-input {
+  @apply bg-surface-container-lowest border border-outline-variant/30 rounded-sm px-4 py-2 focus:ring-1 focus:ring-primary/50 focus:border-primary/50 outline-none transition-all font-medium text-sm text-on-surface;
+  box-shadow: 
+    inset 1px 1px 3px rgba(0, 0, 0, 0.05),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.dark .sharp-input {
+  @apply border-black/40 border-t-black/60 border-l-black/60;
+  box-shadow: 
+    inset 2px 2px 4px rgba(0, 0, 0, 0.5),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.02);
+}
+
+.sharp-button {
+  @apply px-4 py-2 rounded-sm font-bold text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-2 relative overflow-hidden;
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+  box-shadow: 
+    0 4px 0 0 rgba(0, 0, 0, 0.1),
+    0 8px 16px rgba(0, 0, 0, 0.05);
+}
+
+.dark .sharp-button {
+  box-shadow: 
+    0 4px 0 0 rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.sharp-button-primary {
+  @apply bg-primary text-on-primary;
+}
+
+.sharp-button-secondary {
+  @apply bg-surface-container-high text-on-surface border border-outline-variant/20;
+}
+
+.sharp-button:active {
+  box-shadow: 
+    0 1px 0 0 rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.05);
+  transform: translateY(3px);
+}
+
+.dark .sharp-button:active {
+  box-shadow: 
+    0 1px 0 0 rgba(0, 0, 0, 0.4),
+    0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.bg-pattern {
+  background-color: var(--color-background);
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.dark .bg-pattern {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.01) 1px, transparent 1px);
+}
+
+.hover-scale {
+  @apply transition-all duration-150 hover:translate-y-[-2px] active:translate-y-0;
+}
+
