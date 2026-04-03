@@ -1,11 +1,37 @@
 import { motion } from 'motion/react';
-import { Mail, Lock, ArrowRight, ShieldCheck, Globe, Store } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Mail, Lock, ArrowRight, ShieldCheck, Globe, Store, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function Login() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [email, setEmail] = useState('admin@minimart.pro');
+  const [password, setPassword] = useState('password123');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const from = location.state?.from?.pathname || '/';
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      await login(email, password);
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError('Invalid credentials. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-pattern relative overflow-hidden">
       <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
@@ -22,12 +48,20 @@ export function Login() {
 
         <Card className="overflow-hidden" variant="elevated">
           <div className="p-10 md:p-12">
-            <form className="space-y-8">
+            <form className="space-y-8" onSubmit={handleLogin}>
+              {error && (
+                <div className="p-3 bg-error/10 text-error text-xs font-bold rounded-sm border border-error/20">
+                  {error}
+                </div>
+              )}
               <Input 
                 label="Work Email" 
                 type="email" 
                 placeholder="name@minimart.pro" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 icon={<Mail size={18} />}
+                required
               />
 
               <div className="space-y-2.5">
@@ -38,7 +72,10 @@ export function Login() {
                 <Input 
                   type="password" 
                   placeholder="••••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   icon={<Lock size={18} />}
+                  required
                 />
               </div>
 
@@ -53,19 +90,19 @@ export function Login() {
                 </label>
               </div>
 
-              <Link to="/" className="block">
-                <Button className="w-full py-4 text-sm">
-                  <span>Secure Sign In</span>
-                  <ArrowRight size={20} />
-                </Button>
-                {/* <button 
-                  className="w-full py-4 px-6 bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold rounded-lg shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 group" 
-                  type="submit"
-                >
-                  <span>Secure Sign In</span>
-                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                </button> */}
-              </Link>
+              <Button type="submit" className="w-full py-4 text-sm" disabled={isLoading}>
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 size={18} className="animate-spin" />
+                    Authenticating...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    Secure Sign In
+                    <ArrowRight size={20} />
+                  </span>
+                )}
+              </Button>
             </form>
 
             <div className="mt-10 pt-10 border-t border-outline-variant/10 text-center">

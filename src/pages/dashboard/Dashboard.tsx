@@ -1,22 +1,34 @@
 import { motion } from 'motion/react';
-import { TrendingUp, ShoppingBasket, Users, AlertTriangle, ArrowRight, Clock, TrendingDown } from 'lucide-react';
+import * as Icons from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import { useDashboard } from './useDashboard';
+import { ErrorState } from '../../components/ui/ErrorState';
 
 export function Dashboard() {
-  const stats = [
-    { label: 'Total Revenue', value: '$42,890.50', change: '+12.5%', icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10' },
-    { label: 'Active Orders', value: '124', change: 'Active', icon: ShoppingBasket, color: 'text-secondary', bg: 'bg-secondary-container/50' },
-    { label: 'Store Traffic', value: '1,208', change: '-3.2%', icon: Users, color: 'text-tertiary', bg: 'bg-tertiary/10' },
-    { label: 'Low Stock', value: '82%', change: '8 Items', icon: AlertTriangle, color: 'text-error', bg: 'bg-error-container/50' },
-  ];
+  const { stats, topSelling, isLoading, error } = useDashboard();
 
-  const topSelling = [
-    { name: 'Pro Runner X1', sales: '42 sales today', price: '$120', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBNzuemJUIgVY3P84AiKF0xhsDm_RxuVaVqUhyVJbYdMTNZaHdV7CD3tuQ7WExM8I9ooGKBp0iHFUbBfIhlmuaKDa7B2ZwGMWNKvO4Cu8OdWSrbIFmo4rP9GnW-sDXqxKYgNUO6qEHRlEu5-3AcLfRi8R2_ZJ7Ti7goa7YsAvF7rcS7O77wSYV-J1LKsnKLUGABmXXMUCjQ-csGFJJnnuS61PM8XJ-gEz76LJoi39icoo6xYjhKaIEJXE75nw_boRJSYzQZBqOVOn8' },
-    { name: 'Nordic Chrono', sales: '31 sales today', price: '$285', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUZKhwwkUHRljdBMqEMe65ij4e9byD07jLxUj5hBTCuAYSRdpX5-wW1gbWJ1ymAHRtL7WPIBDbb0idTbYMh41tACTAl8LppW3kHQuF3D1K9fPma-IVEf_qoRIATMscmAgUulgh-exes42VRsrwk1YWmzSMddIUdSnQ1iLMqhHAjrcMc-nzZG1KUH5L7e3GOJOF1o1elPyss2CTT8ZG5refOcxiDX202NQkVCWIzSLAUD9ugYJUuMrh4u42FDsWD1lEAnaKaWHCxQU' },
-    { name: 'Acoustic Pro Gen 2', sales: '28 sales today', price: '$199', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC2K4roA2LkeHRnL8EACn2ISvCKCf1LGtV9UeG8veHY-PU-hqOY82oTa9JcLJ2Atl-ePqGji-d1Q2ar6t1GE1gTBhLzZ8xYYquRnBLOn38OVfa9PFwkP8O4Lqi3ci4yokQXuMZ95IWSsqfYTAnkpl5blSudJ2VyOxaVY28xJ79QVO2Q1a5VXA7w59gsKhiIMWg4cca7zmJMlmeeQARdY9Z9gGwlNiRaHU8v2eKGVjudG8GQATI1VxWMhhowfOdzSgVsbnMypupL99w' },
-  ];
+  if (isLoading) {
+    return (
+      <div className="h-[calc(100vh-120px)] flex flex-col items-center justify-center space-y-6">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-headline font-extrabold text-on-surface tracking-tight">Syncing Store Data</h2>
+          <p className="text-on-surface-variant font-medium uppercase tracking-widest text-[10px] animate-pulse">Connecting to MiniMart Retail Cloud...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-[calc(100vh-120px)] flex items-center justify-center">
+        <ErrorState onRetry={() => window.location.reload()} />
+      </div>
+    );
+  }
+
 
   return (
     <motion.div 
@@ -30,11 +42,14 @@ export function Dashboard() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, i) => (
+        {stats.map((stat, i) => {
+          // Dynamically get the icon component from lucide-react using the string name
+          const IconComponent = (Icons as any)[stat.iconName] || Icons.HelpCircle;
+          return (
           <Card key={i} className="p-6" hover>
             <div className="flex items-start justify-between mb-4">
               <div className={`p-3 ${stat.bg} rounded-md ${stat.color}`}>
-                <stat.icon size={24} />
+                <IconComponent size={24} />
               </div>
               <Badge variant={stat.label === 'Store Traffic' ? 'error' : 'primary'} className="font-mono">
                 {stat.change}
@@ -49,16 +64,17 @@ export function Dashboard() {
             )}
             {stat.label === 'Active Orders' && (
               <div className="text-[10px] text-on-surface-variant mt-4 flex items-center gap-1 font-bold uppercase tracking-widest">
-                <Clock size={12} /> 14 pending pickup
+                <Icons.Clock size={12} /> 14 pending pickup
               </div>
             )}
             {stat.label === 'Store Traffic' && (
               <div className="text-[10px] text-error mt-4 flex items-center gap-1 font-bold uppercase tracking-widest">
-                <TrendingDown size={12} /> Slower than last Tuesday
+                <Icons.TrendingDown size={12} /> Slower than last Tuesday
               </div>
             )}
           </Card>
-        ))}
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -115,7 +131,7 @@ export function Dashboard() {
           </div>
           <Button variant="ghost" size="sm" className="mt-8 w-full">
             View Full Report
-            <ArrowRight size={16} />
+            <Icons.ArrowRight size={16} />
           </Button>
         </Card>
       </div>

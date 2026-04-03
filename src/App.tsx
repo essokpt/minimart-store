@@ -6,18 +6,24 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Sidebar, Topbar } from './components/layout/Layout';
 import { Dashboard } from './pages/dashboard/Dashboard';
-import { Inventory } from './pages/inventory/Inventory';
+import { ProductDetail } from './pages/inventory/ProductDetail';
 import { POS } from './pages/pos/POS';
 import { Reports } from './pages/reports/Reports';
 import { Orders } from './pages/orders/Orders';
 import { CreateOrder } from './pages/orders/CreateOrder';
 import { Login } from './pages/auth/Login';
-import { StockReceipt } from './pages/inventory/StockReceipt';
-import { StockReceiptHistory } from './pages/inventory/StockReceiptHistory';
-import { StockAreas } from './pages/inventory/StockAreas';
+import { CreateStockReceipt } from './pages/Stock/CreateStockReceipt';
+import { StockReceiptHistory } from './pages/Stock/StockReceiptHistory';
+import { StockAreas } from './pages/Stock/StockAreas';
+import { Stores } from './pages/Stock/Stores';
+import { Settings } from './pages/settings/Settings';
 import { AnimatePresence } from 'motion/react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SidebarProvider, useSidebar } from './contexts/SidebarContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { Products } from './pages/inventory/Products';
+import { ToastContainer } from './components/ui/Toast';
 
 function AppContent() {
   const location = useLocation();
@@ -36,24 +42,29 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-surface flex">
+      <ToastContainer />
       <Sidebar />
       <div className={`flex-1 ${sidebarWidth} transition-all duration-300`}>
         <Topbar />
         <main className="pt-32 pb-20 px-10 max-w-7xl mx-auto">
           <AnimatePresence mode="wait">
             <Routes location={location}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/inventory" element={<Inventory />} />
-              <Route path="/pos" element={<POS />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/orders/create" element={<CreateOrder />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/stock-receipt" element={<StockReceipt />} />
-              <Route path="/stock-receipt/history" element={<StockReceiptHistory />} />
-              <Route path="/stock-areas" element={<StockAreas />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
+              <Route path="/inventory/product/:id" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
+              <Route path="/pos" element={<ProtectedRoute><POS /></ProtectedRoute>} />
+              <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+              <Route path="/orders/create" element={<ProtectedRoute><CreateOrder /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+              <Route path="/stock/receipts" element={<ProtectedRoute><StockReceiptHistory /></ProtectedRoute>} />
+              <Route path="/stock/receipt/create" element={<ProtectedRoute><CreateStockReceipt /></ProtectedRoute>} />
+              <Route path="/stock-areas" element={<ProtectedRoute><StockAreas /></ProtectedRoute>} />
+              <Route path="/stores" element={<ProtectedRoute><Stores /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
               {/* Fallback to dashboard */}
-              <Route path="*" element={<Dashboard />} />
+              <Route path="*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             </Routes>
           </AnimatePresence>
         </main>
@@ -64,13 +75,15 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <SidebarProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </SidebarProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <SidebarProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </SidebarProvider>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 

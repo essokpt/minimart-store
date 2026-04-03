@@ -1,13 +1,26 @@
 import { InputHTMLAttributes, forwardRef, ReactNode } from 'react';
+import { cn } from '../../lib/utils';
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
   label?: string;
-  error?: string;
+  error?: string | boolean;
   icon?: ReactNode;
+  size?: 'small' | 'medium' | 'large';
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, icon, className = '', ...props }, ref) => {
+  ({ label, error, icon, size = 'medium', className = '', ...props }, ref) => {
+    const sizeClasses = {
+      small: 'py-2 px-3 text-xs',
+      medium: 'py-3 px-4 text-sm',
+      large: 'py-5 px-6 text-base',
+    };
+
+    const iconPadding = {
+      small: 'pl-9',
+      medium: 'pl-12',
+      large: 'pl-14',
+    };
     return (
       <div className="space-y-2 w-full">
         {label && (
@@ -23,13 +36,17 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
           <input
             ref={ref}
-            className={`w-full pl-11 pr-4 py-3.5 bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all placeholder:text-outline outline-none ${
-              icon ? 'pl-12' : ''
-            } ${className}`}
+            className={cn(
+              "w-full bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all placeholder:text-outline outline-none font-bold",
+              sizeClasses[size],
+              icon ? iconPadding[size] : '',
+              error ? 'ring-1 ring-error' : '',
+              className
+            )}
             {...props}
           />
         </div>
-        {error && <p className="text-[10px] text-error font-bold uppercase tracking-widest">{error}</p>}
+        {error && typeof error === 'string' && <p className="text-[10px] text-error font-bold uppercase tracking-widest">{error}</p>}
       </div>
     );
   }

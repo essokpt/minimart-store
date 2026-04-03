@@ -1,11 +1,7 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ChevronRight, 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Truck, 
+import {
+  ChevronRight,
+  Truck,
   ShoppingBag,
   PlusCircle,
   Minus,
@@ -13,6 +9,7 @@ import {
   Trash2,
   Send,
   Package,
+  MapPin,
   CheckCircle,
   Search,
   FileText
@@ -23,6 +20,8 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
+import { CustomerForm } from '../../components/form/CustomerForm';
+import { CustomerInput } from '../../lib/validations';
 
 interface OrderItem {
   id: string;
@@ -37,26 +36,27 @@ interface OrderItem {
 export function CreateOrder() {
   const navigate = useNavigate();
   const [items, setItems] = useState<OrderItem[]>([
-    { 
-      id: '1', 
-      name: 'Signature Wool Blazer', 
+    {
+      id: '1',
+      name: 'Signature Wool Blazer',
       sku: 'AT-BL-001 • Navy Blue • Size 48',
-      price: 850.00, 
-      quantity: 1, 
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBo7P33AKD1f6VekRMnq7Aro7j_Af01seriw-kfrWiZ9iFp61iMxI3RlJW9aceVvf3bk_YK1uohTo1UTDFBLpgwVoRrS0izLEFU_RUye872LSserdbDANQIcUFUdlvu6ymwqw2PmiIfixKEasKp-bGqdyIPLb1T8S-J7-pw51F9dY4Yq8yAfnGWLe1q0lvx4scKio-KxM3hPC75-KeVrCcn90d0Cna486eZkECmBq2E8-Nja30WPaYhd3jVYvmUcbUNItVKbHlZ37Y' 
+      price: 850.00,
+      quantity: 1,
+      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBo7P33AKD1f6VekRMnq7Aro7j_Af01seriw-kfrWiZ9iFp61iMxI3RlJW9aceVvf3bk_YK1uohTo1UTDFBLpgwVoRrS0izLEFU_RUye872LSserdbDANQIcUFUdlvu6ymwqw2PmiIfixKEasKp-bGqdyIPLb1T8S-J7-pw51F9dY4Yq8yAfnGWLe1q0lvx4scKio-KxM3hPC75-KeVrCcn90d0Cna486eZkECmBq2E8-Nja30WPaYhd3jVYvmUcbUNItVKbHlZ37Y'
     },
-    { 
-      id: '2', 
-      name: 'Atelier Craft Sneakers', 
+    {
+      id: '2',
+      name: 'Atelier Craft Sneakers',
       sku: 'AT-SK-442 • Crimson • Size 42',
-      price: 420.00, 
-      quantity: 2, 
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCy9539pVcWRC6vbj2EEd9u4Lu4k3w-RZlZan_1EpDocLxB4Yt0-70oWYlt5ESDYernMg-41zF9XADXyGjmLJicxBOMr2rNp73h0JlcZxo10GV-Y336855qR8epNmcLZddwREHGJzxqe23zEwWBkw40VR_GsWOUXsI_CVWIBVDPmNFDIeFSkaM74szJ7mcRCSR9l8l09kR13hZQPvs1d21G5SV-ldz6_w6rwr3_H-_HYEiqAtUmgaFaGrQsR7msBmrpTSiQyLJ_QnA' 
+      price: 420.00,
+      quantity: 2,
+      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCy9539pVcWRC6vbj2EEd9u4Lu4k3w-RZlZan_1EpDocLxB4Yt0-70oWYlt5ESDYernMg-41zF9XADXyGjmLJicxBOMr2rNp73h0JlcZxo10GV-Y336855qR8epNmcLZddwREHGJzxqe23zEwWBkw40VR_GsWOUXsI_CVWIBVDPmNFDIeFSkaM74szJ7mcRCSR9l8l09kR13hZQPvs1d21G5SV-ldz6_w6rwr3_H-_HYEiqAtUmgaFaGrQsR7msBmrpTSiQyLJ_QnA'
     },
   ]);
 
   const [shippingMethod, setShippingMethod] = useState<'Standard' | 'Express' | 'Pickup'>('Standard');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const tax = subtotal * 0.10;
@@ -65,7 +65,7 @@ export function CreateOrder() {
   const total = subtotal + tax + shippingCost - discount;
 
   const updateQuantity = (id: string, delta: number) => {
-    setItems(prev => prev.map(item => 
+    setItems(prev => prev.map(item =>
       item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
     ));
   };
@@ -74,7 +74,13 @@ export function CreateOrder() {
     setItems(prev => prev.filter(item => item.id !== id));
   };
 
-  const handleCreateOrder = () => {
+  const handleCustomerSubmit = async (customerData: CustomerInput) => {
+    setIsSubmitting(true);
+
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    setIsSubmitting(false);
     setIsSuccess(true);
     setTimeout(() => {
       navigate('/orders');
@@ -82,7 +88,7 @@ export function CreateOrder() {
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="max-w-7xl mx-auto space-y-12"
@@ -101,84 +107,50 @@ export function CreateOrder() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
         {/* Main Form Section */}
         <div className="xl:col-span-8 space-y-8">
-          
-          {/* Customer Information Section */}
-          <Card className="p-8" variant="elevated">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                <User size={20} />
-              </div>
-              <h2 className="text-xl font-bold font-headline">Customer details</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input label="Full Name" placeholder="e.g. Julianne Moore" />
-              <Input label="Email Address" type="email" placeholder="julianne@example.com" />
-              <Input label="Phone Number" type="tel" placeholder="+1 (555) 000-0000" />
-              <Input label="Customer ID (Optional)" placeholder="AT-9921" />
-            </div>
-          </Card>
 
-          {/* Shipping & Delivery Section */}
+          {/* Customer Information Section */}
+          <CustomerForm
+            onSubmit={handleCustomerSubmit}
+            isSubmitting={isSubmitting}
+            submitLabel="Create Order"
+          />
+
+          {/* Shipping Method Section */}
           <Card className="p-8" variant="elevated">
             <div className="flex items-center gap-3 mb-8">
               <div className="p-2 bg-primary/10 rounded-lg text-primary">
                 <Truck size={20} />
               </div>
-              <h2 className="text-xl font-bold font-headline">Shipping details</h2>
+              <h2 className="text-xl font-bold font-headline">Shipping Method</h2>
             </div>
-            
-            <div className="space-y-6">
-              <Input label="Street Address" placeholder="123 Atelier Way, Floor 4" />
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="col-span-2">
-                  <Input label="City" placeholder="Paris" />
-                </div>
-                <Input label="Postal Code" placeholder="75001" />
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-on-surface-variant">Country</label>
-                  <select className="w-full bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all py-3 px-4 outline-none appearance-none">
-                    <option>France</option>
-                    <option>Italy</option>
-                    <option>United Kingdom</option>
-                    <option>USA</option>
-                  </select>
-                </div>
-              </div>
 
-              <div className="pt-4">
-                <label className="text-sm font-semibold text-on-surface-variant mb-4 block">Shipping Method</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[
-                    { id: 'Standard', label: 'Standard Delivery', sub: '3-5 business days', price: 'Free' },
-                    { id: 'Express', label: 'Express Courier', sub: 'Next day delivery', price: '€15.00' },
-                    { id: 'Pickup', label: 'Boutique Pickup', sub: 'Ready in 2 hours', price: 'Free' },
-                  ].map((method) => (
-                    <label 
-                      key={method.id}
-                      className={`relative flex items-center p-4 cursor-pointer rounded-lg border-2 transition-all ${
-                        shippingMethod === method.id 
-                          ? 'border-primary bg-primary/5' 
-                          : 'border-transparent bg-surface-container-low hover:bg-surface-container'
-                      }`}
-                    >
-                      <input 
-                        type="radio" 
-                        name="shipping" 
-                        className="hidden" 
-                        checked={shippingMethod === method.id}
-                        onChange={() => setShippingMethod(method.id as any)}
-                      />
-                      <div>
-                        <p className="font-bold text-on-surface text-sm">{method.label}</p>
-                        <p className="text-[10px] text-on-surface-variant font-medium">{method.sub}</p>
-                      </div>
-                      <span className="ml-auto font-bold text-primary text-sm">{method.price}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { id: 'Standard', label: 'Standard Delivery', sub: '3-5 business days', price: 'Free' },
+                { id: 'Express', label: 'Express Courier', sub: 'Next day delivery', price: '€15.00' },
+                { id: 'Pickup', label: 'Boutique Pickup', sub: 'Ready in 2 hours', price: 'Free' },
+              ].map((method) => (
+                <label
+                  key={method.id}
+                  className={`relative flex items-center p-4 cursor-pointer rounded-lg border-2 transition-all ${shippingMethod === method.id
+                    ? 'border-primary bg-primary/5'
+                    : 'border-transparent bg-surface-container-low hover:bg-surface-container'
+                    }`}
+                >
+                  <input
+                    type="radio"
+                    name="shipping"
+                    className="hidden"
+                    checked={shippingMethod === method.id}
+                    onChange={() => setShippingMethod(method.id as any)}
+                  />
+                  <div>
+                    <p className="font-bold text-on-surface text-sm">{method.label}</p>
+                    <p className="text-[10px] text-on-surface-variant font-medium">{method.sub}</p>
+                  </div>
+                  <span className="ml-auto font-bold text-primary text-sm">{method.price}</span>
+                </label>
+              ))}
             </div>
           </Card>
 
@@ -209,14 +181,14 @@ export function CreateOrder() {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="flex items-center bg-surface-container-high rounded-lg p-1 border border-outline-variant/10">
-                      <button 
+                      <button
                         onClick={() => updateQuantity(item.id, -1)}
                         className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-highest rounded-md transition-all text-on-surface-variant"
                       >
                         <Minus size={14} />
                       </button>
                       <span className="w-8 text-center font-bold text-sm text-on-surface">{item.quantity}</span>
-                      <button 
+                      <button
                         onClick={() => updateQuantity(item.id, 1)}
                         className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-highest rounded-md transition-all text-on-surface-variant"
                       >
@@ -226,7 +198,7 @@ export function CreateOrder() {
                     <div className="w-24 text-right">
                       <p className="font-bold text-on-surface">€{(item.price * item.quantity).toFixed(2)}</p>
                     </div>
-                    <button 
+                    <button
                       onClick={() => removeItem(item.id)}
                       className="p-2 text-on-surface-variant/40 hover:text-error transition-all opacity-0 group-hover:opacity-100"
                     >
@@ -238,8 +210,8 @@ export function CreateOrder() {
 
               {/* Search bar to add items */}
               <div className="mt-8">
-                <Input 
-                  placeholder="Search catalog for more items..." 
+                <Input
+                  placeholder="Search catalog for more items..."
                   icon={<Search size={18} />}
                 />
               </div>
@@ -272,9 +244,9 @@ export function CreateOrder() {
                   </div>
                   <span className="text-error">-€{discount.toFixed(2)}</span>
                 </div>
-                
+
                 <div className="h-px bg-outline-variant/20 my-6"></div>
-                
+
                 <div className="flex justify-between items-end">
                   <div>
                     <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Total amount</p>
@@ -285,44 +257,7 @@ export function CreateOrder() {
               </div>
             </div>
 
-            <div className="space-y-3 pt-4">
-              <Button 
-                onClick={handleCreateOrder}
-                disabled={items.length === 0 || isSuccess}
-                className="w-full py-4 text-lg"
-              >
-                <Send size={20} />
-                Create Order
-              </Button>
-              <Button variant="secondary" className="w-full">
-                Save as Draft
-              </Button>
-              <Button 
-                variant="ghost"
-                onClick={() => navigate('/orders')}
-                className="w-full text-xs"
-              >
-                Discard Changes
-              </Button>
-            </div>
-
-            {/* Mini Map / Warehouse Location Info */}
-            <div className="rounded-xl overflow-hidden bg-surface-container-lowest/50 p-4 space-y-4 border border-outline-variant/5">
-              <div className="flex items-center gap-2">
-                <Package size={14} className="text-primary" />
-                <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">FULFILLMENT CENTER</span>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-lg bg-surface-container-high flex-shrink-0 flex items-center justify-center text-on-surface-variant/40">
-                  <MapPin size={24} />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-bold text-on-surface">Hub Paris-Sud (A-4)</p>
-                  <p className="text-[10px] text-on-surface-variant font-medium">Stock Level: <span className="text-primary font-bold">High (94%)</span></p>
-                  <p className="text-[10px] text-on-surface-variant font-medium">Estimated Dispatch: <span className="text-on-surface font-bold">Today</span></p>
-                </div>
-              </div>
-            </div>
+            {/* Note: Submit button is now in CustomerForm */}
           </Card>
 
           {/* Quick Notes */}
@@ -331,8 +266,8 @@ export function CreateOrder() {
               <FileText size={14} className="text-on-surface-variant/40" />
               <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Internal Notes</label>
             </div>
-            <textarea 
-              className="w-full bg-transparent border-none focus:ring-0 text-sm p-0 resize-none h-24 placeholder:italic placeholder:text-on-surface-variant/30 text-on-surface-variant font-medium" 
+            <textarea
+              className="w-full bg-transparent border-none focus:ring-0 text-sm p-0 resize-none h-24 placeholder:italic placeholder:text-on-surface-variant/30 text-on-surface-variant font-medium"
               placeholder="Add a note for the packing team..."
             ></textarea>
           </div>
@@ -342,13 +277,13 @@ export function CreateOrder() {
       {/* Success Overlay */}
       <AnimatePresence>
         {isSuccess && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-surface/80 backdrop-blur-md flex items-center justify-center"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className="text-center space-y-6"

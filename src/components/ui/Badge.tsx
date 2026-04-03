@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { cn } from '../../lib/utils';
 
 interface BadgeProps {
   children: ReactNode;
@@ -31,7 +32,7 @@ export function Badge({
   };
 
   return (
-    <span className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}>
+    <span className={cn(baseStyles, variants[variant], sizes[size], className)}>
       {children}
     </span>
   );

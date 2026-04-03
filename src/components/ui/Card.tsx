@@ -1,5 +1,6 @@
 import { motion, HTMLMotionProps } from 'motion/react';
 import { ReactNode } from 'react';
+import { cn } from '../../lib/utils';
 
 interface CardProps extends HTMLMotionProps<'div'> {
   children: ReactNode;
@@ -27,7 +28,7 @@ export function Card({
 
   return (
     <motion.div
-      className={`${baseStyles} ${variants[variant]} ${hoverStyles} ${className}`}
+      className={cn(baseStyles, variants[variant], hoverStyles, className)}
       {...props}
     >
       {children}

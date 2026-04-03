@@ -1,15 +1,15 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Search, 
-  FileText, 
-  Download, 
-  Eye, 
-  Filter, 
-  ChevronRight, 
-  ArrowLeft, 
-  Calendar, 
-  Building2, 
-  Package, 
+import {
+  Search,
+  FileText,
+  Download,
+  Eye,
+  Filter,
+  ChevronRight,
+  ArrowLeft,
+  Calendar,
+  Building2,
+  Package,
   MoreVertical,
   X,
   Printer,
@@ -25,83 +25,70 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
+import { useStock } from './useStock';
+import { StockReceipt } from '@/src/types';
 
-interface ReceiptRecord {
-  id: string;
-  supplier: string;
-  date: string;
-  totalUnits: number;
-  totalValuation: number;
-  status: 'Posted' | 'Draft' | 'Cancelled';
-  reference: string;
-  items: {
-    name: string;
-    sku: string;
-    qty: number;
-    unitCost: number;
-    location: string;
-    image: string;
-  }[];
-}
+
 
 export function StockReceiptHistory() {
+  const { stockReceipts, isLoadingReceipt, errorReceipt } = useStock();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptRecord | null>(null);
+  const [selectedReceipt, setSelectedReceipt] = useState<StockReceipt | null>(null);
 
-  const history: ReceiptRecord[] = [
-    {
-      id: 'SR-2023-0892',
-      supplier: 'Luxe Fabrics Ltd',
-      date: '2023-10-25',
-      totalUnits: 91,
-      totalValuation: 11921.00,
-      status: 'Posted',
-      reference: 'DN-99210',
-      items: [
-        { name: 'Modernist Timepiece A1', sku: 'WAT-MD-01', qty: 24, unitCost: 145.00, location: 'Main Warehouse', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAmWRd1hrOaMCnabJnUMFDsqFDmw7vs7K_3Fteqmhmy1j5bsDb2xRNNBG_p_o15MFDt6H48vYpJwephNHUX9PMGbz31fXnQYzefk93SIHQD1uh_GtFpFV8KayalItLuf-zrdey-wxgO4gop6Z8gsVYrwwbTuVXh7CaDZWkFVUlnC7l3DzGG2DbiDhqBw8rEWAX5AT_N-QP4xtF7u6LvUeIRGoefM1Be4o6YuzQzfq-_rdLjX8ofMp7MmNj8U454l8gq9pTZYQcw6fw' },
-        { name: 'AudioSphere Pro Max', sku: 'AUD-PH-99', qty: 12, unitCost: 320.50, location: 'Front Shelf', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBY5O_BIdKmtDV7PqCcqIs8mh7YiE5mT1KuHVWzHO_AWj6sMSDa3CJwJt1kGpH086lXsKGq4F1Q8iov7Xcln1-3Si6K29ueifPcxYoj3XX6Po4f5aFeQloRhIMK9mysgmYSla1AdIUGSVd7WMAAiQaxPebgp0ahrNOf_hTxEP6sApzc0A6w9GeVlZL7e7aAr18UaEwLqERFYGf8bLfafUjYG09CABfAN1LNSxY7CyhKi7et9DDJJuSwzJoljRpf4mNkck8LxIiAos4' },
-      ]
-    },
-    {
-      id: 'SR-2023-0891',
-      supplier: 'Global Logistics',
-      date: '2023-10-24',
-      totalUnits: 45,
-      totalValuation: 5400.00,
-      status: 'Posted',
-      reference: 'DN-88211',
-      items: [
-        { name: 'Velocity Knit Runner', sku: 'SHO-VEL-02', qty: 45, unitCost: 120.00, location: 'Main Warehouse', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAzkWyb0tax6H6SpREZhq_I33tD8_hZaioKD370_kmhShSCU6UKJ88KU48u1-s_n4iRrYSYDckoOXNeEKKOidPaOuTKcRORGeIJpZKuJHLjHzCMBO-dMsc87gnqzXgnKv-LzULzfmJ-UIJ6wVzhewFTS5f6AyYCtbcadjdcjurYGB2CzTPVMBBGH5BTiphYdDnLLqeghKLmnIruxRV7Bh5QEhzL3zzUzIzgMrex3VOri_mqYXHrVlN3s3oLNHGzs3Pu_fiYPF7DxPA' },
-      ]
-    },
-    {
-      id: 'SR-2023-0890',
-      supplier: 'Artisan Supplies',
-      date: '2023-10-22',
-      totalUnits: 120,
-      totalValuation: 8250.00,
-      status: 'Cancelled',
-      reference: 'DN-77102',
-      items: []
-    },
-    {
-      id: 'SR-2023-0889',
-      supplier: 'Nordic Design Co',
-      date: '2023-10-20',
-      totalUnits: 30,
-      totalValuation: 15000.00,
-      status: 'Posted',
-      reference: 'DN-66199',
-      items: []
-    }
-  ];
+  // const history: ReceiptRecord[] = [
+  //   {
+  //     id: 'SR-2023-0892',
+  //     supplier: 'Luxe Fabrics Ltd',
+  //     date: '2023-10-25',
+  //     totalUnits: 91,
+  //     totalValuation: 11921.00,
+  //     status: 'Posted',
+  //     reference: 'DN-99210',
+  //     items: [
+  //       { name: 'Modernist Timepiece A1', sku: 'WAT-MD-01', qty: 24, unitCost: 145.00, location: 'Main Warehouse', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAmWRd1hrOaMCnabJnUMFDsqFDmw7vs7K_3Fteqmhmy1j5bsDb2xRNNBG_p_o15MFDt6H48vYpJwephNHUX9PMGbz31fXnQYzefk93SIHQD1uh_GtFpFV8KayalItLuf-zrdey-wxgO4gop6Z8gsVYrwwbTuVXh7CaDZWkFVUlnC7l3DzGG2DbiDhqBw8rEWAX5AT_N-QP4xtF7u6LvUeIRGoefM1Be4o6YuzQzfq-_rdLjX8ofMp7MmNj8U454l8gq9pTZYQcw6fw' },
+  //       { name: 'AudioSphere Pro Max', sku: 'AUD-PH-99', qty: 12, unitCost: 320.50, location: 'Front Shelf', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBY5O_BIdKmtDV7PqCcqIs8mh7YiE5mT1KuHVWzHO_AWj6sMSDa3CJwJt1kGpH086lXsKGq4F1Q8iov7Xcln1-3Si6K29ueifPcxYoj3XX6Po4f5aFeQloRhIMK9mysgmYSla1AdIUGSVd7WMAAiQaxPebgp0ahrNOf_hTxEP6sApzc0A6w9GeVlZL7e7aAr18UaEwLqERFYGf8bLfafUjYG09CABfAN1LNSxY7CyhKi7et9DDJJuSwzJoljRpf4mNkck8LxIiAos4' },
+  //     ]
+  //   },
+  //   {
+  //     id: 'SR-2023-0891',
+  //     supplier: 'Global Logistics',
+  //     date: '2023-10-24',
+  //     totalUnits: 45,
+  //     totalValuation: 5400.00,
+  //     status: 'Posted',
+  //     reference: 'DN-88211',
+  //     items: [
+  //       { name: 'Velocity Knit Runner', sku: 'SHO-VEL-02', qty: 45, unitCost: 120.00, location: 'Main Warehouse', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAzkWyb0tax6H6SpREZhq_I33tD8_hZaioKD370_kmhShSCU6UKJ88KU48u1-s_n4iRrYSYDckoOXNeEKKOidPaOuTKcRORGeIJpZKuJHLjHzCMBO-dMsc87gnqzXgnKv-LzULzfmJ-UIJ6wVzhewFTS5f6AyYCtbcadjdcjurYGB2CzTPVMBBGH5BTiphYdDnLLqeghKLmnIruxRV7Bh5QEhzL3zzUzIzgMrex3VOri_mqYXHrVlN3s3oLNHGzs3Pu_fiYPF7DxPA' },
+  //     ]
+  //   },
+  //   {
+  //     id: 'SR-2023-0890',
+  //     supplier: 'Artisan Supplies',
+  //     date: '2023-10-22',
+  //     totalUnits: 120,
+  //     totalValuation: 8250.00,
+  //     status: 'Cancelled',
+  //     reference: 'DN-77102',
+  //     items: []
+  //   },
+  //   {
+  //     id: 'SR-2023-0889',
+  //     supplier: 'Nordic Design Co',
+  //     date: '2023-10-20',
+  //     totalUnits: 30,
+  //     totalValuation: 15000.00,
+  //     status: 'Posted',
+  //     reference: 'DN-66199',
+  //     items: []
+  //   }
+  // ];
 
-  const filteredHistory = history.filter(h => 
-    h.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    h.supplier.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    h.reference.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // const filteredHistory = history.filter(h =>
+  //   h.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //   h.supplier.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //   h.reference.toLowerCase().includes(searchQuery.toLowerCase())
+  // );
 
   const handleExport = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(history));
@@ -114,7 +101,7 @@ export function StockReceiptHistory() {
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="space-y-8"
@@ -129,7 +116,7 @@ export function StockReceiptHistory() {
             <Download size={18} />
             Export Data
           </Button>
-          <Button onClick={() => navigate('/stock-receipt')}>
+          <Button onClick={() => navigate('/stock/receipt/create')}>
             <Plus size={18} />
             New Receipt
           </Button>
@@ -139,8 +126,8 @@ export function StockReceiptHistory() {
       <Card className="p-0 overflow-hidden" variant="elevated">
         <div className="p-6 border-b border-outline-variant/10 bg-surface-container-low flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex-1 max-w-md w-full">
-            <Input 
-              placeholder="Search by ID, supplier, or reference..." 
+            <Input
+              placeholder="Search by ID, supplier, or reference..."
               icon={<Search size={18} />}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -172,12 +159,12 @@ export function StockReceiptHistory() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
-              {filteredHistory.map((record) => (
-                <tr key={record.id} className="hover:bg-surface-container-low/50 transition-colors group">
+              {stockReceipts.map((record) => (
+                <tr key={record.receipt_id} className="hover:bg-surface-container-low/50 transition-colors group">
                   <td className="px-8 py-5">
                     <div className="flex flex-col">
-                      <span className="font-bold text-on-surface text-sm">{record.id}</span>
-                      <span className="text-[10px] text-on-surface-variant/60 font-mono">Ref: {record.reference}</span>
+                      <span className="font-bold text-on-surface text-sm">{record.receipt_number}</span>
+                      {/* <span className="text-[10px] text-on-surface-variant/60 font-mono">Ref: {record.receipt_number}</span> */}
                     </div>
                   </td>
                   <td className="px-8 py-5">
@@ -185,18 +172,18 @@ export function StockReceiptHistory() {
                       <div className="p-2 bg-secondary-container/30 rounded text-secondary">
                         <Building2 size={14} />
                       </div>
-                      <span className="text-sm font-semibold text-on-surface">{record.supplier}</span>
+                      <span className="text-sm font-semibold text-on-surface">{record.supplier_name}</span>
                     </div>
                   </td>
                   <td className="px-8 py-5">
-                    <span className="text-sm text-on-surface-variant font-medium">{record.date}</span>
+                    <span className="text-sm text-on-surface-variant font-medium">{record.created_at}</span>
                   </td>
                   <td className="px-8 py-5">
-                    <span className="text-sm font-bold text-on-surface">{record.totalUnits}</span>
+                    <span className="text-sm font-bold text-on-surface">{record.status}</span>
                   </td>
-                  <td className="px-8 py-5 text-right">
-                    <span className="text-sm font-bold text-primary">${record.totalValuation.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </td>
+                  {/* <td className="px-8 py-5 text-right">
+                    <span className="text-sm font-bold text-primary">${record.total_valuation.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </td> */}
                   <td className="px-8 py-5">
                     <Badge variant={record.status === 'Posted' ? 'primary' : record.status === 'Cancelled' ? 'error' : 'secondary'}>
                       {record.status}
@@ -204,7 +191,7 @@ export function StockReceiptHistory() {
                   </td>
                   <td className="px-8 py-5 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button 
+                      <button
                         onClick={() => setSelectedReceipt(record)}
                         className="p-2 text-on-surface-variant/40 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
                         title="Preview Detail"
@@ -223,7 +210,7 @@ export function StockReceiptHistory() {
         </div>
 
         <div className="p-6 border-t border-outline-variant/10 bg-surface-container-low/30 flex justify-between items-center">
-          <p className="text-xs text-on-surface-variant font-medium">Showing {filteredHistory.length} of {history.length} records</p>
+          {/* <p className="text-xs text-on-surface-variant font-medium">Showing {filteredHistory.length} of {history.length} records</p> */}
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled>Previous</Button>
             <Button variant="outline" size="sm" disabled>Next</Button>
@@ -235,14 +222,14 @@ export function StockReceiptHistory() {
       <AnimatePresence>
         {selectedReceipt && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedReceipt(null)}
               className="absolute inset-0 bg-surface/80 backdrop-blur-md"
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -260,7 +247,7 @@ export function StockReceiptHistory() {
                 <div className="flex items-center gap-2">
                   <button className="p-2 hover:bg-surface-container rounded-full transition-colors"><Printer size={20} /></button>
                   <button className="p-2 hover:bg-surface-container rounded-full transition-colors"><Share2 size={20} /></button>
-                  <button 
+                  <button
                     onClick={() => setSelectedReceipt(null)}
                     className="p-2 hover:bg-error/10 hover:text-error rounded-full transition-colors"
                   >

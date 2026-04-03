@@ -4,9 +4,29 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 
+import { useReports } from './useReports';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { Loading } from '@/src/components/ui/Loading';
+
 export function Reports() {
+  const { recentTransactions, isLoading, error } = useReports();
+
+  if (isLoading) {
+    return (
+      <Loading />
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-[calc(100vh-120px)] flex items-center justify-center">
+        <ErrorState onRetry={() => window.location.reload()} />
+      </div>
+    );
+  }
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-12"
@@ -87,25 +107,27 @@ export function Reports() {
           <Button variant="ghost" size="sm">View All History</Button>
         </div>
         <div className="space-y-1">
-          {[
-            { id: '#TR-8821', customer: 'Sarah Jenkins', date: 'Oct 25, 14:22', amount: '$142.50', status: 'Completed' },
-            { id: '#TR-8820', customer: 'Michael Chen', date: 'Oct 25, 13:45', amount: '$28.90', status: 'Completed' },
-            { id: '#TR-8819', customer: 'Elena Rodriguez', date: 'Oct 25, 12:10', amount: '$55.00', status: 'Refunded' },
-            { id: '#TR-8818', customer: 'David Smith', date: 'Oct 25, 11:30', amount: '$12.45', status: 'Completed' },
-          ].map((tr, i) => (
-            <div key={i} className="flex items-center justify-between p-4 hover:bg-surface-container-low rounded-md transition-colors cursor-pointer group border-b border-outline-variant/5 last:border-0">
+          {recentTransactions.length === 0 && (
+            <div className="p-8 text-center text-on-surface-variant italic">No recent transactions found.</div>
+          )}
+          {recentTransactions.map((tr: any, i: number) => (
+            <div key={tr.id || i} className="flex items-center justify-between p-4 hover:bg-surface-container-low rounded-md transition-colors cursor-pointer group border-b border-outline-variant/5 last:border-0">
               <div className="flex items-center gap-6">
-                <span className="font-mono text-xs font-bold text-on-surface-variant">{tr.id}</span>
+                <span className="font-mono text-xs font-bold text-on-surface-variant">{tr.order_number || `#${tr.id}`}</span>
                 <div>
-                  <p className="text-sm font-bold text-on-surface">{tr.customer}</p>
-                  <p className="text-[10px] text-on-surface-variant font-mono font-bold uppercase tracking-wider">{tr.date}</p>
+                  <p className="text-sm font-bold text-on-surface">{tr.customer || tr.customer_name}</p>
+                  <p className="text-[10px] text-on-surface-variant font-mono font-bold uppercase tracking-wider">
+                    {tr.created_at ? new Date(tr.created_at).toLocaleString() : 'Recent'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-8">
-                <Badge variant={tr.status === 'Completed' ? 'primary' : 'error'}>
+                <Badge variant={tr.status === 'Delivered' || tr.status === 'Processing' ? 'primary' : (tr.status === 'Cancelled' ? 'error' : 'warning')}>
                   {tr.status}
                 </Badge>
-                <span className="text-sm font-mono font-bold text-on-surface w-20 text-right">{tr.amount}</span>
+                <span className="text-sm font-mono font-bold text-on-surface w-20 text-right">
+                  ${(tr.total_amount || 0).toFixed(2)}
+                </span>
               </div>
             </div>
           ))}
