@@ -10,8 +10,8 @@ const resources = {
         overview: "Overview",
         products: "Products",
         stock_receipt: "Stock Receipt",
-        stock_areas: "Stock Areas",
-        stores: "Stores",
+        suppliers: "Suppliers",
+        stock_areas: "Areas",
         pos: "POS",
         orders: "Orders",
         reports: "Reports",
@@ -21,7 +21,18 @@ const resources = {
         premium_retail: "Premium Retail",
         store_manager: "Store Manager",
         guest: "Guest",
-        viewer: "Viewer"
+        viewer: "Viewer",
+        profile: "My Profile",
+        store_info: "Store Info",
+        loyalty: "Loyalty Program"
+      },
+      profile: {
+        title: "User Profile",
+        personal_info: "Personal Information",
+        security: "Security & Privacy",
+        activity: "Recent Activity",
+        preferences: "Preferences",
+        save_success: "Profile updated successfully"
       },
       topbar: {
         search_placeholder: "Search inventory, orders, or customers...",
@@ -40,8 +51,8 @@ const resources = {
         overview: "ภาพรวม",
         products: "สินค้า",
         stock_receipt: "รับเข้าสินค้า",
+        suppliers: "ผู้จัดจำหน่าย",
         stock_areas: "พื้นที่จัดเก็บ",
-        stores: "สาขา",
         pos: "จุดขาย (POS)",
         orders: "คำสั่งซื้อ",
         reports: "รายงาน",
@@ -51,7 +62,18 @@ const resources = {
         premium_retail: "พรีเมียม รีเทล",
         store_manager: "ผู้จัดการร้าน",
         guest: "บุคคลทั่วไป",
-        viewer: "ผู้ชม"
+        viewer: "ผู้ชม",
+        profile: "โปรไฟล์ของฉัน",
+        store_info: "ข้อมูลร้านค้า",
+        loyalty: "ระบบสะสมแต้ม"
+      },
+      profile: {
+        title: "โปรไฟล์ผู้ใช้",
+        personal_info: "ข้อมูลส่วนตัว",
+        security: "ความปลอดภัยและความเป็นส่วนตัว",
+        activity: "กิจกรรมล่าสุด",
+        preferences: "การตั้งค่าส่วนตัว",
+        save_success: "อัปเดตโปรไฟล์เรียบร้อยแล้ว"
       },
       topbar: {
         search_placeholder: "ค้นหาสินค้าคงคลัง คำสั่งซื้อ หรือลูกค้า...",

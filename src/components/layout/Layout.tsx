@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, ShoppingCart, BarChart3, Settings, LogOut, PlusCircle, Search, Bell, HelpCircle, Store, Sun, Moon, ClipboardList, Truck, History, Menu, ChevronLeft, ChevronRight, MapPin, ChevronDown, Globe } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, BarChart3, Settings, LogOut, PlusCircle, Search, Bell, HelpCircle, Store, Sun, Moon, ClipboardList, Truck, History, Menu, ChevronLeft, ChevronRight, MapPin, ChevronDown, Globe, User } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,7 +16,8 @@ export function Sidebar() {
   const { t } = useTranslation();
 
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
-    'Inventory': location.pathname.includes('/inventory') || location.pathname.includes('/stock')
+    'Inventory': location.pathname.includes('/inventory') || location.pathname.includes('/stock') || location.pathname.includes('/products') || location.pathname.includes('/stores') || location.pathname.includes('/stock-areas'),
+    'Settings': location.pathname.includes('/settings') || location.pathname.includes('/profile')
   });
 
   const toggleSubMenu = (label: string, e: React.MouseEvent) => {
@@ -31,16 +32,26 @@ export function Sidebar() {
       labelKey: 'sidebar.inventory',
       path: '/inventory',
       subItems: [
-        { labelKey: 'sidebar.overview', path: '/inventory' },
+        { labelKey: 'sidebar.overview', path: '/inventory/info' },
         { labelKey: 'sidebar.products', path: '/products' },
         { labelKey: 'sidebar.stock_receipt', path: '/stock/receipts' },
+        { labelKey: 'sidebar.suppliers', path: '/inventory/suppliers' },
         { labelKey: 'sidebar.stock_areas', path: '/stock-areas' },
-        { labelKey: 'sidebar.stores', path: '/stores' },
       ]
     },
     { icon: ShoppingCart, labelKey: 'sidebar.pos', path: '/pos' },
     { icon: ClipboardList, labelKey: 'sidebar.orders', path: '/orders' },
     { icon: BarChart3, labelKey: 'sidebar.reports', path: '/reports' },
+    {
+      icon: Settings,
+      labelKey: 'sidebar.settings',
+      path: '/settings',
+      subItems: [
+        { labelKey: 'sidebar.profile', path: '/profile' },
+        { labelKey: 'sidebar.store_info', path: '/inventory/info' },
+        { labelKey: 'sidebar.loyalty', path: '/settings/loyalty' },
+      ]
+    },
   ];
 
   if (sidebarState === 'hidden') return null;
@@ -150,11 +161,6 @@ export function Sidebar() {
           </Link>
         )}
 
-        <Link to="/settings" className={`flex items-center ${isMini ? 'justify-center' : 'gap-3 px-4'} py-3 text-on-surface-variant hover:text-on-surface transition-all rounded-sm hover:bg-surface-container-highest`} title={isMini ? t('sidebar.settings') : undefined}>
-          <Settings size={20} />
-          {!isMini && <span className="font-headline text-sm font-medium">{t('sidebar.settings')}</span>}
-        </Link>
-
         <button onClick={logout} className={`flex items-center w-full ${isMini ? 'justify-center' : 'gap-3 px-4'} py-3 text-on-surface-variant hover:text-error transition-all rounded-sm hover:bg-surface-container-highest cursor-pointer focus:outline-none`} title={isMini ? t('sidebar.logout') : undefined}>
           <LogOut size={20} />
           {!isMini && <span className="font-headline text-sm font-medium">{t('sidebar.logout')}</span>}
@@ -229,22 +235,22 @@ export function Topbar() {
 
         <div className="h-8 w-px bg-outline-variant/30"></div>
 
-        <div className="flex items-center gap-3 group cursor-pointer">
+        <Link to="/profile" className="flex items-center gap-3 group cursor-pointer hover:bg-surface-container-high/50 p-2 -m-2 rounded-xl transition-all duration-300 active:scale-95">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-on-surface">{user?.name || t('sidebar.guest')}</p>
+            <p className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{user?.name || t('sidebar.guest')}</p>
             <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-semibold">
               {user?.role ? (user.role === 'Store Manager' ? t('sidebar.store_manager') : user.role) : t('sidebar.viewer')}
             </p>
           </div>
-          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/10">
+          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/10 group-hover:border-primary/40 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-primary/10">
             <img
               src={user?.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuD0ABdzvIhjWGcc48kMT_9nMtqNkWEJJODqTI6o7Mvq9xAF4zXnNwqryDQxQVB3eUgQw9HKBl89Sb3oRTwMO9BwtNL7ybL1IoPcHAj6QF7IPIGvHnxOUHkJ7qs342Cs_Ucdq40KDXXgaN27d8Gg4Gw8TD5MsdRPGU0LyNGTDVXhJyOoYMIce1B2n3GaAO-UfRnBmmWo2Y7bKWomIDO36Aa8iH4fJC3DGLKk2P027esBxqCd7Gfz0kMt8Phz_0KPZPSfsSXFgkxHPok"}
               alt="Profile"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               referrerPolicy="no-referrer"
             />
           </div>
-        </div>
+        </Link>
       </div>
     </header>
   );

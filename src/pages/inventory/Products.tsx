@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { Filter, PlusCircle, Search, ChevronLeft, ChevronRight, Edit2, Trash2, Barcode, Package, AlertTriangle, TrendingUp, X, Check, List, LayoutGrid, Eye } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -11,16 +11,22 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { Modal } from '../../components/ui/Modal';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { ProductForm } from '../../components/form/ProductForm';
+import { TableHeader, Pagination } from '../../components/table';
 import { ProductInput } from '../../lib/validations';
+import { formatCurrency } from '../../lib/formatters';
+import { useStores } from '../Stock/useStores';
 
 import { useInventory } from './useInventory';
 import { useCategories } from './useCategories';
 import { Product } from '../../types';
-import { Loading } from '@/src/components/ui/Loading';
+import { Loading } from '../../components/ui/Loading';
 
 export function Products() {
   const { products, isLoading, error: fetchError, createProduct, updateProduct, deleteProduct, uploadImage } = useInventory();
   const { categories, createCategory, updateCategory, deleteCategory } = useCategories();
+  const { stores } = useStores();
+  const activeStore = stores[0];
+  const currencySymbol = activeStore?.currency_symbol || '$';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -34,6 +40,8 @@ export function Products() {
   const [categoryFilter, setCategoryFilter] = useState<string>('All Items');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   const filteredProducts = products.filter(product => {
     const matchesCategory = categoryFilter === 'All Items' || product.category?.name === categoryFilter;
@@ -47,6 +55,17 @@ export function Products() {
     return matchesCategory && matchesSearch;
   });
 
+  // Pagination
+  const total = filteredProducts.length;
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, total);
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  // reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [categoryFilter, searchQuery, products, pageSize]);
+
   const handleSubmitProduct = async (data: ProductInput, imageFile?: File | null) => {
     try {
       let productData = { ...data } as Partial<Product>;
@@ -58,6 +77,7 @@ export function Products() {
       }
 
       if (editingId) {
+        console.log('Updating product with data:', productData);
         await updateProduct.mutateAsync({ id: editingId, updates: productData });
       } else {
         await createProduct.mutateAsync(productData);
@@ -93,21 +113,23 @@ export function Products() {
   };
 
   const handleEditClick = (product: Product) => {
-    console.log('Editing product:', product);
-    setEditingProduct({
+    const editPayload = {
       name: product.name,
       category_id: product.category_id,
       brand: product.brand || '',
       model: product.model || '',
-      cost_price: product.cost_price,
-      unit_price: product.unit_price,
+      cost_price: product.cost_price ?? 0,
+      unit_price: product.unit_price ?? 0,
       barcode: product.barcode || '',
-      stock_value: product.stock_value || 0,
+      stock_value: product.stock_value ?? 0,
       type: product.type || 'Physical',
       status: product.status || 'Active',
       description: product.description || '',
       image: product.image || '',
-    });
+    };
+    // eslint-disable-next-line no-console
+    // console.log('Products: handleEditClick editPayload ->', editPayload);
+    setEditingProduct(editPayload);
     setEditingId(product.product_id);
     setIsModalOpen(true);
   };
@@ -312,7 +334,7 @@ export function Products() {
         <div className="md:col-span-2 bg-surface-container p-6 rounded-sm shadow-xl flex items-center justify-between text-on-surface overflow-hidden relative border border-outline-variant/10">
           <div className="relative z-10">
             <h3 className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Inventory Value</h3>
-            <p className="text-4xl font-mono font-extrabold mt-1">$142,508.00</p>
+            <p className="text-4xl font-mono font-extrabold mt-1">{formatCurrency(142508.00, { currencySymbol })}</p>
             <div className="mt-4 flex items-center gap-2">
               <TrendingUp size={16} className="text-primary" />
               <span className="text-xs font-mono font-bold text-primary">+12.5% from last month</span>
@@ -326,7 +348,7 @@ export function Products() {
 
       {/* Products Table/Grid */}
       <Card className="overflow-hidden" variant="elevated">
-        <div className="p-6 border-b border-outline-variant/10 flex flex-wrap items-center justify-between gap-4 bg-surface-container-lowest">
+        <TableHeader>
           <div className="flex items-center gap-2 min-w-[200px]">
             <Select
               size="small"
@@ -366,13 +388,8 @@ export function Products() {
                 <LayoutGrid size={18} />
               </button>
             </div>
-            <span className="text-[10px] text-on-surface-variant font-mono font-bold uppercase tracking-wider">Displaying {filteredProducts.length} products</span>
-            <div className="flex gap-1">
-              <button className="p-1.5 hover:bg-surface-container rounded-sm transition-colors border border-outline-variant/20"><ChevronLeft size={16} /></button>
-              <button className="p-1.5 hover:bg-surface-container rounded-sm transition-colors border border-outline-variant/20"><ChevronRight size={16} /></button>
-            </div>
           </div>
-        </div>
+        </TableHeader>
 
         {isLoading ? (
           <div className="p-10 flex justify-center"><Loading /></div>
@@ -390,34 +407,34 @@ export function Products() {
                   <thead className="bg-surface-container-highest/30 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">
                     <tr>
                       <th className="px-8 py-4">Product Details</th>
-                      <th className="px-8 py-4">Category</th>
-                      <th className="px-8 py-4">Barcode</th>
-                      <th className="px-8 py-4">Price</th>
-                      <th className="px-8 py-4">Stock</th>
-                      <th className="px-8 py-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-outline-variant/10">
-                    {filteredProducts.map((product) => (
-                      <tr key={product.product_id} className="group hover:bg-surface-container-low/30 transition-colors">
-                        <td className="px-8 py-5">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-md bg-surface-container-high overflow-hidden border border-outline-variant/20">
-                              <img src={product.image_url || product.image} alt={product.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <th className="px-8 py-4">Category</th>
+                        <th className="px-8 py-4">Barcode</th>
+                        <th className="px-8 py-4">Price</th>
+                        <th className="px-8 py-4">Stock</th>
+                        <th className="px-8 py-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline-variant/10">
+                      {paginatedProducts.map((product) => (
+                        <tr key={product.product_id} className="group hover:bg-surface-container-low/30 transition-colors">
+                          <td className="px-8 py-5">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-surface-container-high overflow-hidden border border-outline-variant/20">
+                                <img src={product.image_url || product.image} alt={product.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              </div>
+                              <div>
+                                <Link to={`/inventory/product/${product.product_id}`} className="hover:underline">
+                                  <p className="text-sm font-bold text-on-surface">{product.name}</p>
+                                </Link>
+                                <p className="text-[10px] text-on-surface-variant font-medium line-clamp-1">{product.brand} {product.model}</p>
+                              </div>
                             </div>
-                            <div>
-                              <Link to={`/inventory/product/${product.product_id}`} className="hover:underline">
-                                <p className="text-sm font-bold text-on-surface">{product.name}</p>
-                              </Link>
-                              <p className="text-[10px] text-on-surface-variant font-medium line-clamp-1">{product.brand} {product.model}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-8 py-5">
-                          <Badge variant="secondary">{product.category?.name}</Badge>
-                        </td>
-                        <td className="px-8 py-5 font-mono text-xs text-on-surface-variant">{product.barcode || 'N/A'}</td>
-                        <td className="px-8 py-5 font-mono text-sm font-bold text-on-surface">${product.unit_price?.toFixed(2)}</td>
+                          </td>
+                          <td className="px-8 py-5">
+                            <Badge variant="secondary">{product.category?.name}</Badge>
+                          </td>
+                          <td className="px-8 py-5 font-mono text-xs text-on-surface-variant">{product.barcode || 'N/A'}</td>
+                          <td className="px-8 py-5 font-mono text-sm font-bold text-on-surface">{formatCurrency(product.unit_price, { currencySymbol })}</td>
                         <td className="px-8 py-5">
                           <div className="flex items-center gap-3">
                             <div className="w-20 h-1.5 bg-surface-container rounded-full overflow-hidden">
@@ -455,16 +472,16 @@ export function Products() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+                className="p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-8"
               >
-                {filteredProducts.map((product) => (
+                {paginatedProducts.map((product) => (
                   <Card key={product.product_id} hover className="overflow-hidden bg-surface-container-lowest">
                     <div className="aspect-square relative overflow-hidden bg-surface-container">
                       <img src={product.image_url || product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
-                      <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
+                      <div className="bg-primary absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
                         <Link
                           to={`/inventory/product/${product.product_id}`}
-                          className="p-2.5 flex items-center justify-center bg-surface-container-highest/90 backdrop-blur-sm text-on-surface rounded-lg shadow-lg hover:bg-primary hover:text-on-primary transition-all"
+                          className="p-2.5 flex items-center justify-center bg-amber-950 backdrop-blur-sm text-on-surface rounded-lg shadow-lg hover:bg-primary hover:text-on-primary transition-all"
                         >
                           <Eye size={16} />
                         </Link>
@@ -491,7 +508,7 @@ export function Products() {
                       <div>
                         <div className="flex justify-between items-start gap-2">
                           <h4 className="font-bold text-on-surface leading-tight truncate">{product.name}</h4>
-                          <span className="font-mono font-bold text-primary text-sm">${product.unit_price?.toFixed(2)}</span>
+                          <span className="font-mono font-bold text-primary text-sm">{formatCurrency(product.unit_price, { currencySymbol })}</span>
                         </div>
                         <p className="text-xs text-on-surface-variant font-medium mt-1 truncate">{product.brand} {product.model}</p>
                       </div>
@@ -516,17 +533,13 @@ export function Products() {
           </AnimatePresence>
         )}
 
-        <div className="p-8 border-t border-outline-variant/10 flex items-center justify-center bg-surface-container-low/10">
-          <nav className="flex items-center gap-1">
-            <button className="w-10 h-10 flex items-center justify-center text-on-surface-variant/60 hover:bg-surface-container rounded-md transition-colors border border-outline-variant/20"><ChevronLeft size={18} /></button>
-            <button className="w-10 h-10 flex items-center justify-center bg-primary text-on-primary font-mono font-bold rounded-md shadow-sm">1</button>
-            <button className="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container font-mono font-bold rounded-md transition-colors border border-outline-variant/20">2</button>
-            <button className="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container font-mono font-bold rounded-md transition-colors border border-outline-variant/20">3</button>
-            <span className="w-10 h-10 flex items-center justify-center text-on-surface-variant/30">...</span>
-            <button className="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container font-mono font-bold rounded-md transition-colors border border-outline-variant/20">48</button>
-            <button className="w-10 h-10 flex items-center justify-center text-on-surface-variant/60 hover:bg-surface-container rounded-md transition-colors border border-outline-variant/20"><ChevronRight size={18} /></button>
-          </nav>
-        </div>
+        <Pagination
+          page={page}
+          setPage={setPage}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
+          total={total}
+        />
       </Card>
 
       <ConfirmModal

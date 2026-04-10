@@ -12,13 +12,18 @@ import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { useState } from 'react';
+import { formatCurrency } from '../../lib/formatters';
+import { useStores } from '../Stock/useStores';
 
 export function ProductDetail() {
   const { id } = useParams();
   const { data: product, isLoading, error } = useProduct(id);
   const { updateProduct } = useInventory();
   const { categories } = useCategories();
-  
+  const { stores } = useStores();
+  const activeStore = stores[0];
+  const currencySymbol = activeStore?.currency_symbol || '$';
+
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [adjustmentType, setAdjustmentType] = useState<'Add' | 'Remove'>('Add');
@@ -29,7 +34,7 @@ export function ProductDetail() {
     if (!product || adjustmentValue <= 0) return;
     const currentStock = product.stock_value || 0;
     const newStock = adjustmentType === 'Add' ? currentStock + adjustmentValue : Math.max(0, currentStock - adjustmentValue);
-    
+
     try {
       await updateProduct.mutateAsync({ id: product.product_id, updates: { stock_value: newStock } });
       setIsAdjustModalOpen(false);
@@ -139,12 +144,12 @@ export function ProductDetail() {
               <div className="space-y-6">
                 <div>
                   <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Retail Price</p>
-                  <p className="text-4xl font-mono font-extrabold text-primary">${product.unit_price?.toFixed(2)}</p>
+                  <p className="text-4xl font-mono font-extrabold text-primary">{formatCurrency(product.unit_price, { currencySymbol })}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Cost Margin</p>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-on-surface">${product.cost_price?.toFixed(2)}</span>
+                    <span className="font-mono font-bold text-on-surface">{formatCurrency(product.cost_price, { currencySymbol })}</span>
                     <Badge variant="success" className="text-[8px]">{marginPercentage}% MARGIN</Badge>
                   </div>
                 </div>
@@ -237,7 +242,7 @@ export function ProductDetail() {
 
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div 
+              <div
                 onClick={() => setAdjustmentType('Add')}
                 className={`p-4 rounded-sm border-2 transition-all cursor-pointer flex flex-col items-center gap-2 ${adjustmentType === 'Add' ? 'border-primary bg-primary/5' : 'border-outline-variant/30 opacity-60 hover:opacity-100'}`}
               >
@@ -246,7 +251,7 @@ export function ProductDetail() {
                 </div>
                 <span className="text-xs font-bold uppercase tracking-widest">Add Stock</span>
               </div>
-              <div 
+              <div
                 onClick={() => setAdjustmentType('Remove')}
                 className={`p-4 rounded-sm border-2 transition-all cursor-pointer flex flex-col items-center gap-2 ${adjustmentType === 'Remove' ? 'border-error bg-error/5' : 'border-outline-variant/30 opacity-60 hover:opacity-100'}`}
               >
@@ -288,7 +293,7 @@ export function ProductDetail() {
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Selling Price ($)"
+              label="Selling Price"
               type="number"
               value={editProduct?.unit_price || 0}
               onChange={(e) => setEditProduct({ ...editProduct, unit_price: parseFloat(e.target.value) })}

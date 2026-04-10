@@ -11,33 +11,37 @@ import {
   LayoutGrid,
   CheckCircle2,
   AlertCircle,
-  Building2
+  Building2,
+  Filter,
+  Calendar,
+  Eye,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
-import { Select } from '../../components/ui/Select';
+import { Input } from '../../components/ui/Input';
+import { InputField, NumberField, SelectField, TextareaField } from '../../components/form/FormField';
 import { Modal } from '../../components/ui/Modal';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { useStock } from './useStock';
 import { useStores } from './useStores';
-import { StockArea } from '@/src/types';
-import { Loading } from '@/src/components/ui/Loading';
-import { ErrorState } from '@/src/components/ui/ErrorState';
+import { StockArea } from '../../types';
+import { Loading } from '../../components/ui/Loading';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { stockAreaSchema, StockAreaInput } from '../../lib/validations';
+import { TableHeader } from '../../components/table/TableHeader';
+import { Pagination } from '../../components/table/Pagination';
+import { Link } from 'react-router-dom';
 
 
 export function StockAreas() {
   const { stockArea, isLoading, error, createArea, updateArea, deleteArea } = useStock();
   const { stores } = useStores();
-
-  // const [areas, setAreas] = useState<StockArea[]>([
-  //   { id: '1', name: 'Main Warehouse', code: 'WH-MAIN', type: 'Ambient', capacity: 1000, currentUsage: 650, description: 'Primary storage for non-perishable goods.' },
-  //   { id: '2', name: 'Cold Storage Unit 3', code: 'CS-03', type: 'Cold', capacity: 200, currentUsage: 180, description: 'Refrigerated unit for dairy and fresh produce.' },
-  //   { id: '3', name: 'Aisle 4 Display', code: 'DISP-A4', type: 'Display', capacity: 50, currentUsage: 42, description: 'Front-of-store display shelving.' },
-  //   { id: '4', name: 'Chemical Bunker', code: 'HAZ-01', type: 'Hazardous', capacity: 100, currentUsage: 15, description: 'Secure storage for cleaning supplies and chemicals.' },
-  // ]);
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,31 +49,39 @@ export function StockAreas() {
   const [areaToDelete, setAreaToDelete] = useState<string | null>(null);
   const [editingArea, setEditingArea] = useState<StockArea | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<StockArea>>({
-    name: '',
-    code: '',
-    type: 'Ambient',
-    capacity: 0,
-    description: '',
-    store_id: ''
-  });
 
-  const filteredAreas = stockArea.filter(a =>
-    a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const form = useForm<StockAreaInput>({
+    resolver: zodResolver(stockAreaSchema),
+    defaultValues: {
+      name: '',
+      status: 'Active',
+      type: 'Ambient',
+      capacity: 0,
+      description: '',
+      store_id: ''
+    }
+  });
 
   const handleOpenModal = (area?: StockArea) => {
     if (area) {
       setEditingArea(area);
-      setFormData(area);
+      form.reset({
+        name: area.name || '',
+        status: area.status || 'Active',
+        type: (area.type as any) || 'Ambient',
+        capacity: area.capacity || 0,
+        currentUsage: area.currentUsage || 0,
+        description: area.description || '',
+        store_id: area.store_id || ''
+      });
     } else {
       setEditingArea(null);
-      setFormData({
+      form.reset({
         name: '',
-        code: null,
+        status: 'Active',
         type: 'Ambient',
         capacity: 0,
+        currentUsage: 0,
         description: '',
         store_id: stores[0]?.store_id || ''
       });
@@ -78,21 +90,21 @@ export function StockAreas() {
     setModalError(null);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (values: StockAreaInput) => {
     try {
       setModalError(null);
       if (editingArea) {
-        // ensure we use the correct ID field for the update
-        const id = editingArea.areas_id || editingArea.area_id;
+        console.log('Editing area:', editingArea);
+        const id = editingArea.area_id || editingArea.area_id;
         await updateArea.mutateAsync({
           id: id,
-          updates: formData
+          updates: values
         });
       } else {
         await createArea.mutateAsync({
-          ...formData,
+          ...values,
           currentUsage: 0,
-          store_id: formData.store_id || stores[0]?.store_id
+          store_id: values.store_id || stores[0]?.store_id
         });
       }
       setIsModalOpen(false);
@@ -101,6 +113,29 @@ export function StockAreas() {
       setModalError(err?.message || 'Failed to save stock area. Please try again.');
     }
   };
+
+  const filteredReceipts = stockArea.filter(record => {
+    const q = searchQuery.toLowerCase();
+    return (
+      record.name?.toLowerCase().includes(q) ||
+      record.status?.toLowerCase().includes(q) ||
+      String(record.area_id || '').toLowerCase().includes(q)
+    );
+  });
+
+  const total = filteredReceipts.length;
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, total);
+  const paginatedAreas = filteredReceipts.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    setPage(1);
+    // ensure form has sensible store default when stores load
+    if (!editingArea && stores[0]?.store_id) {
+      const current = form.getValues();
+      if (!current.store_id) form.setValue('store_id', stores[0].store_id);
+    }
+  }, [stores]);
 
   const handleDeleteClick = (id: string) => {
     setAreaToDelete(id);
@@ -191,16 +226,26 @@ export function StockAreas() {
       </div>
 
       <Card className="p-0 overflow-hidden" variant="elevated">
-        <div className="p-6 border-b border-outline-variant/10 bg-surface-container-low flex flex-col md:flex-row justify-between items-center gap-4">
+        <TableHeader>
           <div className="flex-1 max-w-md w-full">
             <Input
-              placeholder="Search by area name or code..."
+              placeholder="Search by ID, supplier, or reference..."
               icon={<Search size={18} />}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-        </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm">
+              <Filter size={16} />
+              <span>Filter</span>
+            </Button>
+            <Button variant="ghost" size="sm">
+              <Calendar size={16} />
+              <span>Date Range</span>
+            </Button>
+          </div>
+        </TableHeader>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -215,8 +260,8 @@ export function StockAreas() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
-              {filteredAreas.map((area) => (
-                <tr key={area.areas_id} className="hover:bg-surface-container-low/50 transition-colors group">
+              {paginatedAreas.map((area) => (
+                <tr key={area.area_id} className="hover:bg-surface-container-low/50 transition-colors group">
                   <td className="px-8 py-5">
                     <div className="flex items-center gap-4">
                       <div className="p-2 bg-surface-container rounded text-on-surface-variant">
@@ -224,7 +269,7 @@ export function StockAreas() {
                       </div>
                       <div>
                         <p className="font-bold text-on-surface text-sm">{area.name}</p>
-                        <p className="text-[10px] text-on-surface-variant/60 font-mono">{area.code}</p>
+                        <p className="text-[10px] text-on-surface-variant/60 font-mono">{area.status}</p>
                       </div>
                     </div>
                   </td>
@@ -261,6 +306,10 @@ export function StockAreas() {
                   </td>
                   <td className="px-8 py-5 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <Link to={`/stock-areas/${area.area_id}`} className="p-2 hover:bg-surface-container rounded-md">
+                        <Eye size={16} />
+                      </Link>
+
                       <button
                         onClick={() => handleOpenModal(area)}
                         className="p-2 text-on-surface-variant/40 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
@@ -268,7 +317,7 @@ export function StockAreas() {
                         <Edit2 size={18} />
                       </button>
                       <button
-                        onClick={() => handleDeleteClick(area.areas_id)}
+                        onClick={() => handleDeleteClick(area.area_id)}
                         className="p-2 text-on-surface-variant/40 hover:text-error hover:bg-error/5 rounded-lg transition-all"
                       >
                         <Trash2 size={18} />
@@ -280,6 +329,8 @@ export function StockAreas() {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} total={total} />
+
       </Card>
 
       <Modal
@@ -292,7 +343,7 @@ export function StockAreas() {
           <>
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
             <Button
-              onClick={handleSave}
+              onClick={() => form.handleSubmit(handleSave)()}
               loading={createArea.isPending || updateArea.isPending}
             >
               {editingArea ? 'Save Changes' : 'Create Area'}
@@ -300,62 +351,38 @@ export function StockAreas() {
           </>
         }
       >
-        <div className="space-y-5">
-          <Input
-            label="Area Name"
-            placeholder="e.g. Main Warehouse"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          />
-          <Input
-            label="Area Code"
-            placeholder="e.g. WH-01"
-            value={formData.code}
-            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-          />
+        <FormProvider {...form}>
+          <form onSubmit={form.handleSubmit(handleSave)} className="space-y-5">
+            <InputField name="name" label="Area Name" placeholder="e.g. Main Warehouse" />
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Select
-                label="Storage Type"
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-              >
-                <option value="Ambient">Ambient</option>
-                <option value="Cold">Cold Storage</option>
-                <option value="Hazardous">Hazardous</option>
-                <option value="Display">Display</option>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <SelectField
+                  name="type"
+                  label="Storage Type"
+                  options={[
+                    { value: 'Ambient', label: 'Ambient' },
+                    { value: 'Cold', label: 'Cold Storage' },
+                    { value: 'Hazardous', label: 'Hazardous' },
+                    { value: 'Display', label: 'Display' }
+                  ]}
+                />
+              </div>
+              <NumberField name="capacity" label="Capacity (Units)" />
             </div>
-            <Input
-              label="Capacity (Units)"
-              type="number"
-              value={formData.capacity}
-              onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-            />
-          </div>
 
-          <Select
-            label="Assigned Store"
-            value={formData.store_id}
-            onChange={(e) => setFormData({ ...formData, store_id: e.target.value })}
-          >
-            <option value="">Select a store</option>
-            {stores.map(store => (
-              <option key={store.store_id} value={store.store_id}>{store.name}</option>
-            ))}
-          </Select>
-
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest ml-1">Description</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-3 bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all text-sm min-h-[100px] outline-none"
-              placeholder="Describe the purpose or constraints of this area..."
+            <SelectField
+              name="store_id"
+              label="Assigned Store"
+              options={stores.map((s) => ({ value: s.store_id, label: s.name }))}
+              placeholder="Select a store"
             />
-          </div>
-        </div>
+
+            <TextareaField name="description" label="Description" placeholder="Describe the purpose or constraints of this area..." />
+            <InputField name="status" label="Status" placeholder="Active" />
+
+          </form>
+        </FormProvider>
       </Modal>
 
       <ConfirmModal

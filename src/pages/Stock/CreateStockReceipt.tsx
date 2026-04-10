@@ -17,7 +17,10 @@ import {
   AlertTriangle,
   Upload
 } from 'lucide-react';
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent, useEffect } from 'react';
+import { useForm, FormProvider } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -27,8 +30,11 @@ import { Modal } from '../../components/ui/Modal';
 import { useInventory } from '../inventory/useInventory';
 import { useCategories } from '../inventory/useCategories';
 import { Product } from '../../types';
-import { productSchema, StockReceipt } from '../../lib/validations';
+import { productSchema, StockReceipt, stockReceiptSchema } from '../../lib/validations';
+import { InputField, NumberField, SelectField, TextareaField } from '../../components/form/FormField';
+import { ProductForm } from '../../components/form/ProductForm';
 import { useStock } from './useStock';
+import { Route, Router, useRoutes } from 'react-router-dom';
 
 interface ReceiptItem {
   id: string;
@@ -38,23 +44,39 @@ interface ReceiptItem {
   receivedQty: number;
   unitCost: number;
   image: string;
-  location: string;
+  location_name: string;
+  area: string;
 }
 
 export function CreateStockReceipt() {
   const { createStockReceipt, createStockReceiptItem, stockArea } = useStock();
   const { products, createProduct, uploadImage } = useInventory();
   const { categories } = useCategories();
-  const [location, setLocation] = useState({ areas_id: '', name: '' });
+  const [location, setLocation] = useState({ area_id: '', name: '' });
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [receivedItems, setReceivedItems] = useState<ReceiptItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
-
+  //const [supplier, setSupplier] = useState('');
+  //const [deliveryNote, setDeliveryNote] = useState('');
   // Form states
-  const [supplier, setSupplier] = useState('');
-  const [deliveryNote, setDeliveryNote] = useState('');
-  const [arrivalDate, setArrivalDate] = useState('');
+  const form = useForm<StockReceipt>({
+    resolver: zodResolver(stockReceiptSchema),
+    defaultValues: {
+      supplier_name: '',
+      notes: '',
+      status: 'Posted',
+      receipt_number: 'SR-' + Date.now().toString(),
+      created_at: new Date().toISOString(),
+      created_by: ''
+    }
+  });
+
+  const { watch, setValue } = form;
+  const navigate = useNavigate();
+
+  const supplier = watch('supplier_name');
+  const deliveryNote = watch('notes');
   const [itemQty, setItemQty] = useState(1);
   const [unitCost, setUnitCost] = useState(0);
 
@@ -120,7 +142,7 @@ export function CreateStockReceipt() {
   const addItem = (product: Product) => {
     if (!receivedItems.find(item => item.id === product.product_id)) {
       setReceivedItems([...receivedItems, {
-        product_id: product.product_id,
+        id: product.product_id,
         name: product.name,
         sku: product.barcode || '',
         currentStock: product.stock_value || 0,
@@ -128,7 +150,7 @@ export function CreateStockReceipt() {
         receivedQty: itemQty,
         unitCost: unitCost || product.cost_price,
         location_name: location.name,
-        area_id: location.areas_id,
+        area: location.area_id,
       }]);
     }
     setSearchQuery('');
@@ -140,50 +162,54 @@ export function CreateStockReceipt() {
     setReceivedItems(items => items.filter(item => item.id !== id));
   };
 
-  const handleSubmit = async () => {
-    setIsSuccess(true);
-    setTimeout(() => setIsSuccess(false), 3000);
-    setReceivedItems([]);
-    const updateItemData = receivedItems.map((item) => {
-      return {
-        ...item,
-        receipt_id: 'new_id123'
-      }
-    })
-    console.log("create receivedItems", updateItemData);
+  const handleSubmit = async (values?: StockReceipt) => {
+    // Build payload
+    const newStockReceiptData: any = {
+      supplier_name: values?.supplier_name || supplier,
+      notes: values?.notes || deliveryNote,
+      status: values?.status || 'Posted',
+      receipt_number: values?.receipt_number || ('SR-' + Date.now()),
+      created_at: values?.created_at || new Date().toISOString(),
+      created_by: values?.created_by || null
+    };
 
     try {
-      const newStockReceiptData: any = {
-        supplier_name: supplier,
-        notes: 'test',
-        // created_at: null,
-        status: 'Posted',
-        //receipt_id: 'ohytig234546',
-        receipt_number: 'SR-' + Date.now(),
-        created_by: null,
-        //stock_receiptitems: [],
-      };
+      const newStockReceipt = await createStockReceipt.mutateAsync(newStockReceiptData);
+      // Optionally create items if API expects them separately
+      if (receivedItems && receivedItems.length > 0) {
+        for (const item of receivedItems) {
+          const newItem: any = {
+            receipt_id: newStockReceipt.receipt_id || newStockReceipt.id || newStockReceipt.receipt_number,
+            product: item.id,
+            lot_number: (item as any).lot_number || null,
+            quantity: item.receivedQty,
+            unit_cost: item.unitCost,
+            area: item.area || null,
+          };
+          try {
+            await createStockReceiptItem.mutateAsync(newItem);
+          } catch (e) {
+            // continue creating other items even if one fails
+            console.error('Failed to create receipt item', e);
+          }
+        }
+      }
 
-      // if (receivedItems) {
-      //   const newStockReceipt = await createStockReceipt.mutateAsync(newStockReceiptData);
-      //   if (newStockReceipt.receipt_id) {
-      //     const newItem = {
-      //       receipt_id: newStockReceipt.receipt_id,
-      //       product_id: receivedItems[0].id,
-      //       lot_number: '123443',
-      //       quantity: 10,
-      //       unit_cost: 1000,
-      //       area_id: '452d2ef7-a374-4bb1-931b-241b9ad868a1',
-      //     }
-      //     console.log("newItem", newItem);
-      //     await createStockReceiptItem.mutateAsync(newItem);
-      //   }
-      // }
-      // setIsModalOpen(false);
+      // Navigate to newly created receipt detail page
+      const receiptId = newStockReceipt.receipt_id || newStockReceipt.id || newStockReceipt.receipt_number;
+      if (receiptId) {
+        navigate(`/stock/receipts`);
+        return;
+      }
+
+      // fallback: clear form and show success
+      setIsSuccess(true);
+      setTimeout(() => setIsSuccess(false), 3000);
+      setReceivedItems([]);
     } catch (err: any) {
       console.error('Failed to create stock receipt:', err);
-      //setModalError(err?.message || 'Failed to save store. Please check your connection and try again.');
     }
+    //setModalError(err?.message || 'Failed to save store. Please check your connection and try again.');
   };
 
   // const totalUnits = receivedItems.reduce((acc, item) => acc + item.receivedQty, 0);
@@ -209,7 +235,7 @@ export function CreateStockReceipt() {
               <Save size={18} />
               Save as Template
             </Button>
-            <Button className="flex-1 md:flex-none shadow-lg" onClick={handleSubmit}>
+            <Button className="flex-1 md:flex-none shadow-lg" onClick={() => form.handleSubmit(handleSubmit)()}>
               <Send size={18} />
               Post Receipt
             </Button>
@@ -232,22 +258,9 @@ export function CreateStockReceipt() {
                 placeholder="Search or select supplier..."
                 icon={<Building2 size={18} />}
                 value={supplier}
-                onChange={(e) => setSupplier(e.target.value)}
+                onChange={(e) => form.setValue('supplier_name', e.target.value)}
               />
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Delivery Note Ref."
-                  placeholder="DN-XXXXXX"
-                  value={deliveryNote}
-                  onChange={(e) => setDeliveryNote(e.target.value)}
-                />
-                <Input
-                  label="Arrival Date"
-                  type="date"
-                  value={arrivalDate}
-                  onChange={(e) => setArrivalDate(e.target.value)}
-                />
-              </div>
+              
             </div>
           </Card>
 
@@ -387,17 +400,23 @@ export function CreateStockReceipt() {
                   label="Storage Destination"
                   value={location.area_id}
                   onChange={(e) => {
-                    const dataObject = JSON.parse(e.target.value);
-                    setLocation({
-                      area_id: dataObject.area_id,
-                      name: dataObject.name
-                    })
-                    console.log(dataObject, location)
-                  }
-                  }
+                    const id = e.target.value;
+                    if (!id) {
+                      setLocation({ area_id: '', name: '' });
+                      return;
+                    }
+                    const area = stockArea?.find(a => a.area_id === id);
+                    if (area) {
+                      setLocation({
+                        area_id: area.area_id,
+                        name: area.name
+                      });
+                    }
+                  }}
                 >
+                  <option value="">Select Storage Area</option>
                   {stockArea?.map((area) => (
-                    <option key={area.area_id} value={JSON.stringify(area)}>
+                    <option key={area.area_id} value={area.area_id}>
                       {area.name}
                     </option>
                   ))}
@@ -411,11 +430,11 @@ export function CreateStockReceipt() {
                 variant="secondary"
                 className="w-full py-4 mt-2 font-bold"
                 onClick={() => {
-                  addItem(selectedProduct)
+                  addItem(selectedProduct as Product)
                   setSelectedProduct(null)
-                  setItemQty(0)
+                  setItemQty(1)
                   setUnitCost(0)
-                  setLocation({ areas_id: '', name: '' })
+                  setLocation({ area_id: '', name: '' })
                 }
                 }
               >
@@ -448,7 +467,7 @@ export function CreateStockReceipt() {
                 </thead>
                 <tbody className="divide-y divide-surface-container">
                   {receivedItems?.map(item => (
-                    <tr key={item.product_id} className="hover:bg-surface-container-low/50 transition-colors group">
+                    <tr key={item.id} className="hover:bg-surface-container-low/50 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded bg-surface-container overflow-hidden shrink-0">
@@ -508,7 +527,7 @@ export function CreateStockReceipt() {
                   <Button variant="outline" className="flex-1 md:flex-none" onClick={() => setReceivedItems([])}>
                     Discard Draft
                   </Button>
-                  <Button className="flex-1 md:flex-none px-10" onClick={handleSubmit} disabled={receivedItems.length === 0}>
+                  <Button className="flex-1 md:flex-none px-10" onClick={() => form.handleSubmit(handleSubmit)()} disabled={receivedItems.length === 0}>
                     Confirm & Post Receipt
                   </Button>
                 </div>
@@ -531,6 +550,46 @@ export function CreateStockReceipt() {
           </div>
         </motion.div>
       )}
+
+      {/* Mini Create Product Modal - now using shared ProductForm component */}
+      <Modal
+        isOpen={isProductModalOpen}
+        onClose={() => {
+          setIsProductModalOpen(false);
+          setPendingImageFile(null);
+          setImagePreviewUrl('');
+          setFormErrors({});
+        }}
+        title="Create Product"
+        maxWidth="w-[600px]"
+      >
+        <ProductForm
+          categories={categories}
+          isSubmitting={createProduct.isPending}
+          onCancel={() => {
+            setIsProductModalOpen(false);
+            setPendingImageFile(null);
+            setImagePreviewUrl('');
+            setFormErrors({});
+          }}
+          onSubmit={async (data, imageFile) => {
+            try {
+              const payload: any = { ...data };
+              if (imageFile) {
+                const publicUrl = await uploadImage.mutateAsync(imageFile);
+                payload.image = publicUrl;
+              }
+              const newProduct = await createProduct.mutateAsync(payload);
+              setSelectedProduct(newProduct);
+              setIsProductModalOpen(false);
+              setPendingImageFile(null);
+              setImagePreviewUrl('');
+            } catch (err) {
+              console.error('Failed to create product:', err);
+            }
+          }}
+        />
+      </Modal>
     </motion.div>
   );
 }

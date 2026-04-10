@@ -1,8 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
-import { Product, StockArea } from '../../types';
+import { Product, StockArea, StockReceipt, Stock_receiptitems } from '../../types';
 import { useNotificationStore } from '../../store/useNotificationStore';
-import { StockReceipt, StockReceiptitems } from '@/src/lib/validations';
 
 export function useStock() {
   const queryClient = useQueryClient();
@@ -55,6 +54,23 @@ export function useStock() {
     }
   });
 
+  // const { data: stockReceiptDetails = [], isLoading: isLoadingReceiptDetails, error: errorReceiptDetails } = useQuery({
+  //   queryKey: ['stockReceiptDetails'],
+  //   queryFn: async function (id:any) {
+  //     const { data, error } = await supabase
+  //       .from('stock_receipts')
+  //       .select('*,stock_receipt_items(*)')
+  //       .eq('receipt_id', id)
+  //       .single();
+
+  //     if (error) {
+  //       addNotification('error', `Failed to load stock areas: ${error.message}`);
+  //       throw error;
+  //     }
+  //     return data as StockReceipt;
+  //   }
+  // });
+
 
   // Create product
   const createProduct = useMutation({
@@ -98,7 +114,7 @@ export function useStock() {
   });
 
   const createStockReceiptItem = useMutation({
-    mutationFn: async (newStockReceiptItem: Partial<StockReceiptitems>) => {
+    mutationFn: async (newStockReceiptItem: Partial<Stock_receiptitems>) => {
       const { data, error } = await supabase
         .from('stock_receipt_items')
         .insert([newStockReceiptItem])
@@ -185,7 +201,7 @@ export function useStock() {
       const { data, error } = await supabase
         .from('areas')
         .update(updates)
-        .eq('areas_id', id)
+        .eq('area_id', id)
         .select()
         .single();
 
@@ -237,6 +253,9 @@ export function useStock() {
     isLoadingReceipt,
     errorReceipt,
     createStockReceipt,
-    createStockReceiptItem
+    createStockReceiptItem,
+    // stockReceiptDetails,
+    // isLoadingReceiptDetails,
+    // errorReceiptDetails
   };
 }

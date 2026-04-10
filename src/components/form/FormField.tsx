@@ -32,8 +32,8 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
   ({ name, label, helperText, containerClassName, size = 'medium', icon, className, ...props }, ref) => {
     const { register, formState: { errors }, watch } = useFormContext();
     const error = errors[name]?.message as string | undefined;
-    const value = watch(name);
-   //console.log(`Rendering InputField: name=${name}, value=${value}, error=${error}`);
+    const fieldValue = watch(name); // Watch to trigger re-renders on value changes
+    
     return (
       <div className={cn("space-y-1 w-full", containerClassName)}>
         {label && (
@@ -47,19 +47,32 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
               {icon}
             </div>
           )}
-          <input
-            {...register(name, { ...props.required ? { required: `${label || 'This field'} is required` } : undefined })}
-            ref={ref}
-            defaultValue={value}
-            className={cn(
-              "w-full bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all placeholder:text-outline outline-none font-bold text-on-surface",
-              sizeClasses[size],
-              icon ? iconPadding[size] : '',
-              error ? 'ring-1 ring-error' : '',
-              className
-            )}
-            {...props}
-          />
+          {
+            (() => {
+              const registration = register(name, props.required ? { required: `${label || 'This field'} is required` } : undefined);
+              const { ref: registerRef, ...rest } = registration as any;
+              return (
+                <input
+                  {...rest}
+                  ref={(el) => {
+                    registerRef(el);
+                    if (ref) {
+                      if (typeof ref === 'function') (ref as any)(el);
+                      else (ref as any).current = el;
+                    }
+                  }}
+                  className={cn(
+                    "w-full bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all placeholder:text-outline outline-none font-bold text-on-surface",
+                    sizeClasses[size],
+                    icon ? iconPadding[size] : '',
+                    error ? 'ring-1 ring-error' : '',
+                    className
+                  )}
+                  {...props}
+                />
+              );
+            })()
+          }
         </div>
         {error ? (
           <p className="text-[10px] text-error font-bold uppercase tracking-widest">{error}</p>
@@ -84,9 +97,10 @@ interface NumberFieldProps extends BaseFieldProps {
 
 export const NumberField = forwardRef<HTMLInputElement, NumberFieldProps>(
   ({ name, label, helperText, containerClassName, ...props }, ref) => {
-    const { register, formState: { errors } } = useFormContext();
+    const { register, formState: { errors }, watch } = useFormContext();
     const error = errors[name]?.message as string | undefined;
-
+    const fieldValue = watch(name); // Watch to trigger re-renders on value changes
+    
     return (
       <div className={cn("space-y-1 w-full", containerClassName)}>
         {label && (
@@ -94,16 +108,30 @@ export const NumberField = forwardRef<HTMLInputElement, NumberFieldProps>(
             {label}
           </label>
         )}
-        <input
-          type="number"
-          {...register(name, { valueAsNumber: true })}
-          ref={ref}
-          className={cn(
-            "w-full bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all placeholder:text-outline outline-none font-bold text-on-surface py-3 px-4 text-sm",
-            error ? 'ring-1 ring-error' : ''
-          )}
-          {...props}
-        />
+        {
+          (() => {
+            const registration = register(name, { valueAsNumber: true } as any);
+            const { ref: registerRef, ...rest } = registration as any;
+            return (
+              <input
+                type="number"
+                {...rest}
+                ref={(el) => {
+                  registerRef(el);
+                  if (ref) {
+                    if (typeof ref === 'function') (ref as any)(el);
+                    else (ref as any).current = el;
+                  }
+                }}
+                className={cn(
+                  "w-full bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all placeholder:text-outline outline-none font-bold text-on-surface py-3 px-4 text-sm",
+                  error ? 'ring-1 ring-error' : ''
+                )}
+                {...props}
+              />
+            );
+          })()
+        }
         {error ? (
           <p className="text-[10px] text-error font-bold uppercase tracking-widest">{error}</p>
         ) : helperText ? (
@@ -141,25 +169,39 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
             {label}
           </label>
         )}
-        <select
-          {...register(name)}
-          ref={ref}
-          disabled={disabled}
-          className={cn(
-            "w-full bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all outline-none font-bold text-on-surface py-3 px-4 text-sm appearance-none cursor-pointer",
-            error ? 'ring-1 ring-error' : '',
-            disabled ? 'opacity-50 cursor-not-allowed' : ''
-          )}
-        >
-          {placeholder && (
-            <option value="">{placeholder}</option>
-          )}
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        {
+          (() => {
+            const registration = register(name);
+            const { ref: registerRef, ...rest } = registration as any;
+            return (
+              <select
+                {...rest}
+                ref={(el) => {
+                  registerRef(el);
+                  if (ref) {
+                    if (typeof ref === 'function') (ref as any)(el);
+                    else (ref as any).current = el;
+                  }
+                }}
+                disabled={disabled}
+                className={cn(
+                  "w-full bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all outline-none font-bold text-on-surface py-3 px-4 text-sm appearance-none cursor-pointer",
+                  error ? 'ring-1 ring-error' : '',
+                  disabled ? 'opacity-50 cursor-not-allowed' : ''
+                )}
+              >
+                {placeholder && (
+                  <option value="">{placeholder}</option>
+                )}
+                {options.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            );
+          })()
+        }
         {error ? (
           <p className="text-[10px] text-error font-bold uppercase tracking-widest">{error}</p>
         ) : helperText ? (
@@ -181,8 +223,9 @@ interface TextareaFieldProps extends BaseFieldProps {
 
 export const TextareaField = forwardRef<HTMLTextAreaElement, TextareaFieldProps>(
   ({ name, label, rows = 3, helperText, containerClassName, ...props }, ref) => {
-    const { register, formState: { errors } } = useFormContext();
+    const { register, formState: { errors }, watch } = useFormContext();
     const error = errors[name]?.message as string | undefined;
+    const fieldValue = watch(name); // Watch to trigger re-renders on value changes
 
     return (
       <div className={cn("space-y-1 w-full", containerClassName)}>
@@ -191,16 +234,30 @@ export const TextareaField = forwardRef<HTMLTextAreaElement, TextareaFieldProps>
             {label}
           </label>
         )}
-        <textarea
-          {...register(name)}
-          ref={ref}
-          rows={rows}
-          className={cn(
-            "w-full bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all placeholder:text-outline outline-none font-bold text-on-surface py-3 px-4 text-sm resize-none",
-            error ? 'ring-1 ring-error' : ''
-          )}
-          {...props}
-        />
+        {
+          (() => {
+            const registration = register(name);
+            const { ref: registerRef, ...rest } = registration as any;
+            return (
+              <textarea
+                {...rest}
+                ref={(el) => {
+                  registerRef(el);
+                  if (ref) {
+                    if (typeof ref === 'function') (ref as any)(el);
+                    else (ref as any).current = el;
+                  }
+                }}
+                rows={rows}
+                className={cn(
+                  "w-full bg-surface-container-highest border-none rounded-lg focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all placeholder:text-outline outline-none font-bold text-on-surface py-3 px-4 text-sm resize-none",
+                  error ? 'ring-1 ring-error' : ''
+                )}
+                {...props}
+              />
+            );
+          })()
+        }
         {error ? (
           <p className="text-[10px] text-error font-bold uppercase tracking-widest">{error}</p>
         ) : helperText ? (

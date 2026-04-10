@@ -6,7 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 
 import { useReports } from './useReports';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { Loading } from '@/src/components/ui/Loading';
+import { Loading } from '../../components/ui/Loading';
 
 export function Reports() {
   const { recentTransactions, isLoading, error } = useReports();

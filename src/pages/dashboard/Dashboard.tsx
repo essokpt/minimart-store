@@ -4,10 +4,15 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { useDashboard } from './useDashboard';
+import { useStores } from '../Stock/useStores';
+import { formatCurrency } from '../../lib/formatters';
 import { ErrorState } from '../../components/ui/ErrorState';
 
 export function Dashboard() {
   const { stats, topSelling, isLoading, error } = useDashboard();
+  const { stores } = useStores();
+  const activeStore = stores[0];
+  const currencySymbol = activeStore?.currency_symbol || '$';
 
   if (isLoading) {
     return (
@@ -125,7 +130,11 @@ export function Dashboard() {
                   <p className="text-sm font-bold text-on-surface">{product.name}</p>
                   <p className="text-xs text-on-surface-variant font-medium">{product.sales}</p>
                 </div>
-                <p className="text-sm font-mono font-bold text-primary">{product.price}</p>
+                <p className="text-sm font-mono font-bold text-primary">
+                  {i === 0 ? formatCurrency(1250.00, { currencySymbol }) : 
+                   i === 1 ? formatCurrency(840.00, { currencySymbol }) : 
+                   formatCurrency(450.00, { currencySymbol })}
+                </p>
               </div>
             ))}
           </div>

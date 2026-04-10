@@ -25,8 +25,9 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
+import { TableHeader, Pagination } from '../../components/table';
 import { useStock } from './useStock';
-import { StockReceipt } from '@/src/types';
+import { StockReceipt } from '../../types';
 
 
 
@@ -35,6 +36,27 @@ export function StockReceiptHistory() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReceipt, setSelectedReceipt] = useState<StockReceipt | null>(null);
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+
+  const filteredReceipts = stockReceipts.filter(record => {
+    const q = searchQuery.toLowerCase();
+    return (
+      record.receipt_number?.toLowerCase().includes(q) ||
+      record.supplier_name?.toLowerCase().includes(q) ||
+      String(record.receipt_id || '').toLowerCase().includes(q)
+    );
+  });
+
+  const total = filteredReceipts.length;
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, total);
+  const paginatedReceipts = filteredReceipts.slice(startIndex, endIndex);
+
+  // reset to first page when filters change
+  useState(() => {
+    setPage(1);
+  });
 
   // const history: ReceiptRecord[] = [
   //   {
@@ -124,7 +146,7 @@ export function StockReceiptHistory() {
       </header>
 
       <Card className="p-0 overflow-hidden" variant="elevated">
-        <div className="p-6 border-b border-outline-variant/10 bg-surface-container-low flex flex-col md:flex-row justify-between items-center gap-4">
+        <TableHeader>
           <div className="flex-1 max-w-md w-full">
             <Input
               placeholder="Search by ID, supplier, or reference..."
@@ -143,7 +165,7 @@ export function StockReceiptHistory() {
               <span>Date Range</span>
             </Button>
           </div>
-        </div>
+        </TableHeader>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -153,13 +175,12 @@ export function StockReceiptHistory() {
                 <th className="px-8 py-4">Supplier</th>
                 <th className="px-8 py-4">Arrival Date</th>
                 <th className="px-8 py-4">Units</th>
-                <th className="px-8 py-4 text-right">Valuation</th>
                 <th className="px-8 py-4">Status</th>
                 <th className="px-8 py-4"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
-              {stockReceipts.map((record) => (
+              {paginatedReceipts.map((record) => (
                 <tr key={record.receipt_id} className="hover:bg-surface-container-low/50 transition-colors group">
                   <td className="px-8 py-5">
                     <div className="flex flex-col">
@@ -192,7 +213,7 @@ export function StockReceiptHistory() {
                   <td className="px-8 py-5 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => setSelectedReceipt(record)}
+                        onClick={() => navigate(`/stock/receipt/${record.receipt_id || record.receipt_number}`)}
                         className="p-2 text-on-surface-variant/40 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
                         title="Preview Detail"
                       >
@@ -209,19 +230,13 @@ export function StockReceiptHistory() {
           </table>
         </div>
 
-        <div className="p-6 border-t border-outline-variant/10 bg-surface-container-low/30 flex justify-between items-center">
-          {/* <p className="text-xs text-on-surface-variant font-medium">Showing {filteredHistory.length} of {history.length} records</p> */}
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled>Previous</Button>
-            <Button variant="outline" size="sm" disabled>Next</Button>
-          </div>
-        </div>
+        <Pagination page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} total={total} />
       </Card>
 
       {/* Detail Preview Modal */}
       <AnimatePresence>
         {selectedReceipt && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+          <div className="fixed inset-0 z-100 flex items-center justify-center p-4 md:p-8">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -239,10 +254,10 @@ export function StockReceiptHistory() {
               <div className="p-6 md:p-8 border-b border-outline-variant/10 flex justify-between items-start bg-surface-container-low/50">
                 <div className="space-y-1">
                   <div className="flex items-center gap-3">
-                    <h2 className="text-2xl font-headline font-extrabold text-on-surface">{selectedReceipt.id}</h2>
+                    <h2 className="text-2xl font-headline font-extrabold text-on-surface">{selectedReceipt.receipt_id}</h2>
                     <Badge variant={selectedReceipt.status === 'Posted' ? 'primary' : 'error'}>{selectedReceipt.status}</Badge>
                   </div>
-                  <p className="text-sm text-on-surface-variant font-medium">Recorded on {selectedReceipt.date} • Ref: {selectedReceipt.reference}</p>
+                  <p className="text-sm text-on-surface-variant font-medium">Recorded on {selectedReceipt.date} • Ref: {selectedReceipt.receipt_number}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button className="p-2 hover:bg-surface-container rounded-full transition-colors"><Printer size={20} /></button>
@@ -264,7 +279,7 @@ export function StockReceiptHistory() {
                     <p className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest">Supplier</p>
                     <div className="flex items-center gap-2">
                       <Building2 size={16} className="text-primary" />
-                      <p className="font-bold text-on-surface">{selectedReceipt.supplier}</p>
+                      <p className="font-bold text-on-surface">{selectedReceipt.supplier_name}</p>
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -294,25 +309,27 @@ export function StockReceiptHistory() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-outline-variant/10">
-                        {selectedReceipt.items.map((item, idx) => (
+                        {selectedReceipt?.stock_receipt_items?.map((item, idx) => (
                           <tr key={idx} className="hover:bg-surface-container-low/30 transition-colors">
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-4">
-                                <img src={item.image} alt="" className="w-10 h-10 rounded object-cover" />
+                                <div className="w-10 h-10 rounded bg-surface-container flex items-center justify-center">
+                                  <Package size={16} />
+                                </div>
                                 <div>
-                                  <p className="text-sm font-bold text-on-surface">{item.name}</p>
-                                  <p className="text-[10px] text-on-surface-variant/60 font-mono">{item.sku} • {item.location}</p>
+                                  <p className="text-sm font-bold text-on-surface">{(item as any).name || ''}</p>
+                                  <p className="text-[10px] text-on-surface-variant/60 font-mono">{(item as any).sku || ''} • {(item as any).area_id || ''}</p>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-sm font-medium">{item.qty} units</td>
-                            <td className="px-6 py-4 text-sm font-medium">${item.unitCost.toFixed(2)}</td>
+                            <td className="px-6 py-4 text-sm font-medium">{(item as any).quantity || 0} units</td>
+                            <td className="px-6 py-4 text-sm font-medium">${((item as any).unitCost || 0).toFixed ? (item as any).unitCost.toFixed(2) : ((item as any).unitCost || 0)}</td>
                             <td className="px-6 py-4 text-right text-sm font-bold text-on-surface">
-                              ${(item.qty * item.unitCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              ${(((item as any).quantity || 0) * ((item as any).unitCost || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </td>
                           </tr>
                         ))}
-                        {selectedReceipt.items.length === 0 && (
+                        {selectedReceipt?.stock_receipt_items?.length === 0 && (
                           <tr>
                             <td colSpan={4} className="px-6 py-12 text-center text-on-surface-variant italic text-sm">
                               No item details available for this record.
@@ -333,7 +350,7 @@ export function StockReceiptHistory() {
                         <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                           <CheckCircle2 size={16} />
                         </div>
-                        <div className="w-px h-full bg-outline-variant/20 min-h-[20px]"></div>
+                        <div className="w-px h-full bg-outline-variant/20 min-h-5"></div>
                       </div>
                       <div className="pb-4">
                         <p className="text-sm font-bold text-on-surface">Receipt Posted</p>
@@ -349,7 +366,7 @@ export function StockReceiptHistory() {
                       </div>
                       <div>
                         <p className="text-sm font-bold text-on-surface">Draft Created</p>
-                        <p className="text-xs text-on-surface-variant">Initial entry recorded from delivery note {selectedReceipt.reference}</p>
+                        <p className="text-xs text-on-surface-variant">Initial entry recorded from delivery note {selectedReceipt.receipt_number}</p>
                         <p className="text-[10px] text-on-surface-variant/40 mt-1">{selectedReceipt.date} 13:45:02</p>
                       </div>
                     </div>

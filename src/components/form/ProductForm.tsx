@@ -1,4 +1,4 @@
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Package, Upload, X } from 'lucide-react';
 import { useRef, useState, ChangeEvent, useEffect } from 'react';
@@ -9,10 +9,12 @@ import { InputField, NumberField, SelectField, TextareaField } from './FormField
 import { Button } from '../ui/Button';
 import { Category } from '../../types';
 
+type FormMode = 'create' | 'edit';
+
 interface ProductFormProps {
   categories: Category[];
   initialData?: Partial<ProductInput>;
-  onSubmit: (data: ProductInput, imageFile?: File | null) => void;
+  onSubmit: (data: ProductInput, imageFile?: File | null) => Promise<void> | void;
   onCancel: () => void;
   isSubmitting?: boolean;
 }
@@ -45,6 +47,24 @@ const typeOptions = [
   { value: 'Service', label: 'Service' },
 ];
 
+const getDefaultValues = (
+  initialData?: Partial<ProductInput>,
+  categories?: Category[]
+): ProductFormValues => ({
+  name: initialData?.name || '',
+  category_id: initialData?.category_id || categories?.[0]?.category_id || '',
+  brand: initialData?.brand || '',
+  model: initialData?.model || '',
+  cost_price: initialData?.cost_price ?? 0,
+  unit_price: initialData?.unit_price ?? 0,
+  barcode: initialData?.barcode || '',
+  stock_value: initialData?.stock_value ?? 0,
+  type: initialData?.type || 'Physical',
+  status: initialData?.status || 'Active',
+  description: initialData?.description || '',
+  image: initialData?.image || '',
+});
+
 export function ProductForm({
   categories,
   initialData,
@@ -54,41 +74,19 @@ export function ProductForm({
 }: ProductFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string>('');
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string>(initialData?.image || '');
   const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const formMode: FormMode = initialData ? 'edit' : 'create';
 
-  //console.log('ProductForm rendered with initialData:', initialData);
   const form = useForm<ProductFormValues>({
-      resolver: zodResolver(productSchema) as any,
-      defaultValues: initialData ? {
-        name: initialData.name || '',
-        category_id: initialData.category_id || categories[0]?.category_id || '',
-        brand: initialData.brand || '',
-        model: initialData.model || '',
-        cost_price: initialData.cost_price ?? 0,
-        unit_price: initialData.unit_price ?? 0,
-        barcode: initialData.barcode || '',
-        stock_value: initialData.stock_value ?? 0,
-        type: initialData.type || 'Physical',
-        status: initialData.status || 'Active',
-        description: initialData.description || '',
-        image: initialData.image || '',
-      } :{
-        name: '',
-        category_id: categories[0]?.category_id || '',
-        brand: '',
-        model: '',
-        cost_price: 0,
-        unit_price: 0,
-        barcode: '',
-        stock_value: 0,
-        type: 'Physical',
-        status: 'Active',
-        description: '',
-        image: '',
-      },
-    });
+    resolver: zodResolver(productSchema) as any,
+    mode: 'onChange',
+    defaultValues: getDefaultValues(initialData, categories),
+  });
+
+  // debug: inspect form default values at initialization
+  // eslint-disable-next-line no-console
+  //console.log('ProductForm init defaultValues ->', getDefaultValues(initialData, categories));
 
   const categoryOptions = categories.map(cat => ({
     value: cat.category_id,
@@ -98,96 +96,105 @@ export function ProductForm({
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      form.setError('image', {
+        type: 'manual',
+        message: 'Please select a valid image file',
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      form.setError('image', {
+        type: 'manual',
+        message: 'Image size must be less than 5MB',
+      });
+      return;
+    }
+
     setPendingImageFile(file);
     const previewUrl = URL.createObjectURL(file);
     setImagePreviewUrl(previewUrl);
+    form.clearErrors('image');
   };
 
   const clearImage = () => {
     setPendingImageFile(null);
     setImagePreviewUrl('');
     form.setValue('image', '');
+    form.clearErrors('image');
   };
 
-  const handleSubmit = (data: ProductFormValues) => {
-    onSubmit(data as unknown as ProductInput, pendingImageFile);
+  const handleFormSubmit = async (data: ProductFormValues) => {
+    try {
+      // Trigger built-in validation for all fields
+      const valid = await form.trigger();
+      if (!valid) return;
+
+      // Additional custom validation: require image (file or URL) for create mode
+      const values = form.getValues();
+      const hasImageFile = pendingImageFile;
+      const hasImageUrl = (values.image || '').toString().trim().length > 0;
+
+      if (!hasImageFile && !hasImageUrl && formMode === 'create') {
+        form.setError('image', {
+          type: 'manual',
+          message: 'Please provide either an image file or URL',
+        });
+        return;
+      }
+
+      // Coerce numeric fields to numbers to satisfy backend/types
+      const payload: ProductInput = {
+        name: values.name,
+        category_id: values.category_id,
+        brand: values.brand || '',
+        model: values.model || '',
+        cost_price: Number(values.cost_price) || 0,
+        unit_price: Number(values.unit_price) || 0,
+        barcode: values.barcode || '',
+        stock_value: Number(values.stock_value) || 0,
+        type: values.type || 'Physical',
+        status: values.status || 'Active',
+        description: values.description || '',
+        image: values.image || '',
+      } as ProductInput;
+
+      await onSubmit(payload, pendingImageFile);
+
+      // If creation succeeded, reset form to defaults so inputs clear
+      if (formMode === 'create') {
+        form.reset(getDefaultValues(undefined, categories));
+        setImagePreviewUrl('');
+        setPendingImageFile(null);
+      }
+    } catch (error) {
+      console.error('Form submission error:', error);
+    }
   };
 
-  // Track previous initialData to detect actual changes
- // const prevInitialDataRef = useRef<Partial<ProductInput> | undefined>(undefined);
- // const hasInitialDataBeenApplied = useRef<boolean>(false);
+  // Reset form when initialData changes
+  useEffect(() => {
+    const defaults = getDefaultValues(initialData, categories);
+    form.reset(defaults);
+    // debug: log reset values to verify edit-mode initialization
+    // eslint-disable-next-line no-console
+    // console.log('ProductForm: reset with initialData ->', initialData, 'defaults ->', defaults, 'form values ->', form.getValues());
+    setImagePreviewUrl(initialData?.image || '');
+    setPendingImageFile(null);
+  }, [initialData, categories, form]);
 
-  //useEffect(() => {
-   // const isNewInitialData = initialData !== prevInitialDataRef.current;
-   // const isFirstCategoriesLoad = !hasInitialDataBeenApplied.current && categories.length > 0;
-
-    // Reset when:
-    // 1. initialData actually changed (edit mode), OR
-    // 2. initialData exists and categories just loaded (first time with data)
-  //   if (isNewInitialData || (initialData && isFirstCategoriesLoad)) {
-  //     if (isNewInitialData) {
-  //       prevInitialDataRef.current = initialData;
-  //     }
-  //     hasInitialDataBeenApplied.current = true;
-
-  //     if (initialData) {
-  //       form.reset({
-  //         name: initialData.name || '',
-  //         category_id: initialData.category_id || '',
-  //         brand: initialData.brand || '',
-  //         model: initialData.model || '',
-  //         cost_price: initialData.cost_price ?? 0,
-  //         unit_price: initialData.unit_price ?? 0,
-  //         barcode: initialData.barcode || '',
-  //         stock_value: initialData.stock_value ?? 0,
-  //         type: initialData.type || 'Physical',
-  //         status: initialData.status || 'Active',
-  //         description: initialData.description || '',
-  //         image: initialData.image || '',
-  //       });
-  //        Also set image preview if there's an image
-  //       if (initialData.image) {
-  //         setImagePreviewUrl(initialData.image);
-  //       }
-  //     }
-  //   } else if (!initialData && isNewInitialData) {
-  //      Switched to "new product" mode
-  //     hasInitialDataBeenApplied.current = false;
-  //     form.reset({
-  //       name: '',
-  //       category_id: categories[0]?.category_id || '',
-  //       brand: '',
-  //       model: '',
-  //       cost_price: 0,
-  //       unit_price: 0,
-  //       barcode: '',
-  //       stock_value: 0,
-  //       type: 'Physical',
-  //       status: 'Active',
-  //       description: '',
-  //       image: '',
-  //     });
-  //     setImagePreviewUrl('');
-  //     setPendingImageFile(null);
-  //   }
-  // }, [initialData, categories, form]);
-
-  
-
-  // Cleanup preview URL on unmount and when initialData changes
-  // useEffect(() => {
-  //   return () => {
-  //     if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-  //   };
-  // }, [imagePreviewUrl]);
-
-  // Clear image preview when initialData is null (new product)
-  // useEffect(() => {
-  //   if (!initialData) {
-  //     setImagePreviewUrl('');
-  //     setPendingImageFile(null);
-  //   }
-  // }, [initialData]);
+  // Cleanup preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl && imagePreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+    };
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -198,14 +205,13 @@ export function ProductForm({
         <h2 className="text-xl font-bold font-headline">Product Information</h2>
       </div>
 
-      <FormProvider form={form} onSubmit={handleSubmit}>
+      <FormProvider form={form} onSubmit={handleFormSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
           {/* Product Name - Full Width */}
           <InputField
             name="name"
             label="Product Name *"
-           // placeholder={initialData ? initialData.name : "e.g. Organic Apple Juice"}
-            
+            placeholder="e.g. Organic Apple Juice"
             containerClassName="md:col-span-2"
           />
 
@@ -213,8 +219,7 @@ export function ProductForm({
           <InputField
             name="brand"
             label="Brand"
-            
-           // placeholder={initialData ? initialData.brand : "e.g. Nature's Best"}
+            placeholder="e.g. Nature's Best"
           />
           <InputField
             name="model"
@@ -273,6 +278,7 @@ export function ProductForm({
             placeholder="0.00"
             min={0}
             step={0.01}
+            
           />
           <NumberField
             name="unit_price"
@@ -387,8 +393,10 @@ export function ProductForm({
             type="submit"
             className="flex-1"
             loading={isSubmitting}
+            disabled={isSubmitting || !form.formState.isValid}
           >
-            {initialData ? 'Update Product' : 'Save Product'}
+            {/* {formMode === 'edit' ? 'Update Product' : 'Create Product'} */}
+            Save
           </Button>
         </div>
       </FormProvider>

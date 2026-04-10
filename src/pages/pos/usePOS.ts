@@ -1,13 +1,92 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
-import { Order } from '../../types';
+import { Order, OrderItem } from '../../types';
 import { useNotificationStore } from '../../store/useNotificationStore';
 
 export function usePOS() {
   const queryClient = useQueryClient();
   const { addNotification } = useNotificationStore();
 
-  // Handle high-level POS operations (like checkout)
+  // Lookup barcode from stock_receipt_items table ONLY
+  const lookupBarcode = async (barcode: string) => {
+    // Try stock_receipt_items table (check SKU, lot_number, or serial_id)
+    // Note: We use .or to check multiple potential barcode/identifier fields
+    const { data: receiptItem, error: rError } = await supabase
+      .from('stock_receipt_items')
+      .select('*, product:products(*, category:product_categories(*))')
+      .or(`sku.eq.${barcode},lot_number.eq.${barcode}`)
+      .maybeSingle();
+
+    if (receiptItem && receiptItem.product) {
+      return {
+        ...receiptItem.product,
+        receipt_item_id: receiptItem.receipt_item_id, // Keep track of which receipt item it came from
+        sku: receiptItem.sku,
+        lot_number: receiptItem.lot_number
+      };
+    }
+
+    return null;
+  };
+
+  // Mutation to deduct stock after sale
+  const deductStock = useMutation({
+    mutationFn: async (items: { product_id: string; qty: number; receipt_item_id?: number }[]) => {
+      const results = await Promise.all(items.map(async (item) => {
+        const operations = [];
+
+        // 1. Update master product inventory
+        const { data: product } = await supabase
+          .from('products')
+          .select('stock_value')
+          .eq('product_id', item.product_id)
+          .single();
+
+        const currentMasterStock = product?.stock_value || 0;
+        const newMasterStock = Math.max(0, currentMasterStock - item.qty);
+
+        operations.push(
+          supabase
+            .from('products')
+            .update({ stock_value: newMasterStock })
+            .eq('product_id', item.product_id)
+        );
+
+        // 2. If we have a specific receipt item, update its quantity too
+        if (item.receipt_item_id) {
+          const { data: receiptItem } = await supabase
+            .from('stock_receipt_items')
+            .select('quantity')
+            .eq('receipt_item_id', item.receipt_item_id)
+            .single();
+
+          const currentReceiptQty = receiptItem?.quantity || 0;
+          const newReceiptQty = Math.max(0, currentReceiptQty - item.qty);
+
+          operations.push(
+            supabase
+              .from('stock_receipt_items')
+              .update({ quantity: newReceiptQty })
+              .eq('receipt_item_id', item.receipt_item_id)
+          );
+        }
+
+        const responses = await Promise.all(operations);
+        const error = responses.find(r => r.error)?.error;
+        if (error) throw error;
+
+        return responses.map(r => r.data);
+      }));
+      return results;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['area-detail'] });
+    }
+  });
+
+  // Mutation for POS checkout (create order)
   const checkout = useMutation({
     mutationFn: async (orderData: Partial<Order>) => {
       const { data, error } = await supabase
@@ -15,22 +94,34 @@ export function usePOS() {
         .insert([orderData])
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
-    onSuccess: (data: any) => {
-      // Invalidate both orders and dashboard stats since a new order affects both
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      addNotification('success', `Transaction #${data.id} completed successfully`);
+    }
+  });
+
+  const createOrderItems = useMutation({
+    mutationFn: async (items: Partial<OrderItem>[]) => {
+      const { data, error } = await supabase
+        .from('order_items')
+        .insert(items)
+        .select();
+
+      if (error) throw error;
+      return data;
     },
-    onError: (error: any) => {
-      addNotification('error', `Checkout failed: ${error.message}`);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
     }
   });
 
   return {
-    checkout
+    checkout,
+    lookupBarcode,
+    deductStock,
+    createOrderItems
   };
 }

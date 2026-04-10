@@ -1,12 +1,9 @@
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Search,
   Plus,
   Download,
   Filter,
-  MoreVertical,
-  ChevronLeft,
-  ChevronRight,
   TrendingUp,
   Truck,
   RotateCcw,
@@ -14,8 +11,11 @@ import {
   ShoppingBag,
   Clock,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Trash2,
+  FileText
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -23,9 +23,14 @@ import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { Select } from '../../components/ui/Select';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { TableHeader, Pagination } from '../../components/table';
 
 import { useOrders } from './useOrders';
+import { useStores } from '../Stock/useStores';
+import { formatCurrency } from '../../lib/formatters';
 import { Order } from '../../types';
+import { Loading } from '../../components/ui/Loading';
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -33,13 +38,61 @@ const getStatusBadge = (status: string) => {
     case 'Pending': return <Badge variant="warning">{status}</Badge>;
     case 'Shipped': return <Badge variant="info">{status}</Badge>;
     case 'Delivered': return <Badge variant="success">{status}</Badge>;
+    case 'Completed': return <Badge variant="success">{status}</Badge>;
     case 'Cancelled': return <Badge variant="error">{status}</Badge>;
     default: return <Badge variant="secondary">{status}</Badge>;
   }
 };
 
 export function Orders() {
-  const { orders, isLoading, error } = useOrders();
+  const { orders, isLoading, error, deleteOrder } = useOrders();
+  const { stores } = useStores();
+  const activeStore = stores[0];
+  const currencySymbol = activeStore?.currency_symbol || '$';
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All Orders');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+
+  const filteredOrders = (orders || []).filter(order => {
+    const matchesStatus = statusFilter === 'All Orders' || order.status === statusFilter;
+    const searchLower = (searchQuery || '').toLowerCase();
+    const matchesSearch = 
+      (order.order_number || '').toLowerCase().includes(searchLower) ||
+      (order.customer || '').toLowerCase().includes(searchLower);
+    
+    return matchesStatus && matchesSearch;
+  });
+
+  // Pagination
+  const total = filteredOrders.length;
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, total);
+  const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, statusFilter, pageSize]);
+
+  const handleDeleteClick = (id: string) => {
+    setOrderToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const processDelete = async () => {
+    if (!orderToDelete) return;
+    try {
+      await deleteOrder.mutateAsync(orderToDelete);
+      setIsDeleteModalOpen(false);
+      setOrderToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete order:', err);
+    }
+  };
 
   if (error) {
     return (
@@ -51,15 +104,15 @@ export function Orders() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       className="space-y-12 pb-20"
     >
       {/* Page Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-1">
           <h2 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">Order Management</h2>
-          <p className="text-on-surface-variant font-medium">You have <span className="text-primary font-bold">1,284</span> total orders in your retail ecosystem.</p>
+          <p className="text-on-surface-variant font-medium">Tracking <span className="text-primary font-bold">{total}</span> total orders in your system.</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="secondary">
@@ -81,10 +134,10 @@ export function Orders() {
             <span className="p-2 bg-primary/10 text-primary rounded-md">
               <ShoppingBag size={20} />
             </span>
-            <Badge variant="primary">+12%</Badge>
+            <Badge variant="primary" className="font-mono">+12%</Badge>
           </div>
           <h3 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Total Orders</h3>
-          <p className="text-2xl font-headline font-bold text-on-surface mt-1">1,284</p>
+          <p className="text-2xl font-headline font-bold text-on-surface mt-1">{orders.length}</p>
         </Card>
 
         <Card className="p-5" hover>
@@ -92,10 +145,12 @@ export function Orders() {
             <span className="p-2 bg-amber-500/10 text-amber-600 rounded-md">
               <Clock size={20} />
             </span>
-            <Badge variant="warning">Action Required</Badge>
+            <Badge variant="warning" className="font-mono">Action Required</Badge>
           </div>
           <h3 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Pending Fulfillment</h3>
-          <p className="text-2xl font-headline font-bold text-on-surface mt-1">42</p>
+          <p className="text-2xl font-headline font-bold text-on-surface mt-1">
+            {orders.filter(o => o.status === 'Pending').length}
+          </p>
         </Card>
 
         <Card className="p-5" hover>
@@ -103,10 +158,10 @@ export function Orders() {
             <span className="p-2 bg-green-500/10 text-green-600 rounded-md">
               <CheckCircle2 size={20} />
             </span>
-            <Badge variant="success">98%</Badge>
+            <Badge variant="success" className="font-mono">98%</Badge>
           </div>
           <h3 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Success Rate</h3>
-          <p className="text-2xl font-headline font-bold text-on-surface mt-1">Delivered</p>
+          <p className="text-2xl font-headline font-bold text-on-surface mt-1">High Efficiency</p>
         </Card>
 
         <Card className="p-5" hover>
@@ -114,114 +169,140 @@ export function Orders() {
             <span className="p-2 bg-error/10 text-error rounded-md">
               <XCircle size={20} />
             </span>
-            <Badge variant="error">2.4%</Badge>
+            <Badge variant="error" className="font-mono">2.4%</Badge>
           </div>
           <h3 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Return Rate</h3>
-          <p className="text-2xl font-headline font-bold text-on-surface mt-1">Refunded</p>
+          <p className="text-2xl font-headline font-bold text-on-surface mt-1">Minimal Returns</p>
         </Card>
       </div>
 
-      {/* Filter Chips Section */}
-      <section>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm">All Orders</Button>
-          {['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'].map((status) => (
-            <Button key={status} variant="secondary" size="sm">
-              {status}
-            </Button>
-          ))}
-          <div className="h-6 w-px bg-outline-variant/30 mx-2"></div>
-          <Button variant="outline" size="sm">
-            <Filter size={18} />
-            Advanced Filters
-          </Button>
-        </div>
-      </section>
-
       {/* Orders Table Area */}
       <Card className="overflow-hidden" variant="elevated">
-        <div className="p-6 border-b border-outline-variant/10 flex flex-wrap items-center justify-between gap-4 bg-surface-container-lowest">
-          <div className="flex items-center gap-4 flex-1 md:flex-none">
+        <TableHeader>
+          <div className="flex items-center gap-2 min-w-[200px]">
+             <Select
+              size="small"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-surface-container"
+            >
+              <option value="All Orders">All Statuses</option>
+              {['Pending', 'Processing', 'Shipped', 'Delivered', 'Completed', 'Cancelled'].map(status => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="flex-1 max-w-md">
             <Input
-              placeholder="Search orders, customers..."
-              icon={<Search size={16} />}
-              className="md:w-64"
+              placeholder="Search by ID or customer..."
+              icon={<Search size={18} />}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-surface-container"
             />
           </div>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-surface-container-low/50">
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Order ID</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Customer</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Date</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Total Amount</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Status</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/10">
-              {orders.length === 0 && !isLoading && (
-                <tr>
-                  <td colSpan={6} className="px-8 py-8 text-center text-on-surface-variant">There are no orders to display.</td>
-                </tr>
-              )}
-              {orders.map((order) => (
-                <tr key={order.order_id} className="group hover:bg-surface-container-low/30 transition-colors">
-                  <td className="px-8 py-5">
-                    <span className="font-mono font-bold text-primary">{order.order_number}</span>
-                  </td>
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-3">
-                      {order.avatar ? (
-                        <img src={order.avatar} alt={order.customer || order.customer_name} className="w-8 h-8 rounded-full object-cover border border-outline-variant/20" referrerPolicy="no-referrer" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center text-[10px] font-bold">
-                          {order.initials || String(order.customer_name || 'UC').substring(0, 2).toUpperCase()}
-                        </div>
-                      )}
-                      <span className="text-sm font-bold text-on-surface">{order.customer || order.customer_name}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5 text-xs text-on-surface-variant font-medium">{order.date || (order.created_at ? new Date(order.created_at).toLocaleDateString() : '')}</td>
-                  <td className="px-8 py-5 font-mono text-sm font-bold text-on-surface">{order.total ? order.total : `$${(order.total_amount || 0).toFixed(2)}`}</td>
-                  <td className="px-8 py-5">
-                    {getStatusBadge(order.status)}
-                  </td>
-                  <td className="px-8 py-5 text-right">
-                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-2 text-on-surface-variant/60 hover:text-primary hover:bg-primary/5 rounded-md transition-all border border-transparent hover:border-primary/20"><Eye size={16} /></button>
-                      <button className="p-2 text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-container-highest rounded-md transition-all border border-transparent hover:border-outline-variant/20"><MoreVertical size={16} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="px-8 py-6 bg-surface-container-low/30 border-t border-outline-variant/10 flex items-center justify-between">
-          <p className="text-[10px] font-mono font-bold text-on-surface-variant uppercase tracking-wider">Showing <span className="font-bold">1 - 25</span> of 1,284 results</p>
-          <div className="flex items-center gap-1">
-            <button className="w-10 h-10 flex items-center justify-center text-on-surface-variant/60 hover:bg-surface-container rounded-md transition-colors border border-outline-variant/20 disabled:opacity-30" disabled>
-              <ChevronLeft size={18} />
-            </button>
-            <button className="w-10 h-10 flex items-center justify-center bg-primary text-on-primary font-mono font-bold rounded-md shadow-sm">1</button>
-            <button className="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container font-mono font-bold rounded-md transition-colors border border-outline-variant/20">2</button>
-            <button className="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container font-mono font-bold rounded-md transition-colors border border-outline-variant/20">3</button>
-            <span className="px-2 text-on-surface-variant/30">...</span>
-            <button className="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container font-mono font-bold rounded-md transition-colors border border-outline-variant/20">52</button>
-            <button className="w-10 h-10 flex items-center justify-center text-on-surface-variant/60 hover:bg-surface-container rounded-md transition-colors border border-outline-variant/20">
-              <ChevronRight size={18} />
-            </button>
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" size="sm">
+              <Filter size={16} />
+              Filters
+            </Button>
           </div>
-        </div>
+        </TableHeader>
+
+        {isLoading ? (
+          <div className="p-10 flex justify-center"><Loading /></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-surface-container-highest/30 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">
+                <tr>
+                  <th className="px-8 py-5">Order ID</th>
+                  <th className="px-8 py-5">Customer</th>
+                  <th className="px-8 py-5">Date</th>
+                  <th className="px-8 py-5">Type</th>
+                  <th className="px-8 py-5">Payment</th>
+                  <th className="px-8 py-5">Amount</th>
+                  <th className="px-8 py-5">Status</th>
+                  <th className="px-8 py-5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/10">
+                {paginatedOrders.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-8 py-10 text-center text-on-surface-variant italic">No orders found matching your criteria.</td>
+                  </tr>
+                )}
+                {paginatedOrders.map((order) => (
+                  <tr key={order.order_id} className="group hover:bg-surface-container-low/30 transition-colors">
+                    <td className="px-8 py-5">
+                      <span className="font-mono font-bold text-primary">{order.order_number}</span>
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-on-surface">{order.customer}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="space-y-0.5">
+                        <p className="text-xs text-on-surface font-medium">
+                          {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
+                        </p>
+                        <p className="text-[10px] text-on-surface-variant/60 font-mono">
+                          {order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5 uppercase tracking-tighter">
+                      <Badge variant={order.order_type === 'pos' ? 'primary' : 'secondary'} className="text-[9px] font-extrabold px-2">{order.order_type}</Badge>
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-2 text-xs font-bold text-on-surface-variant">
+                         {order.payment_method === 'cash' ? <ShoppingBag size={12} /> : <Clock size={12} />}
+                         <span className="uppercase">{order.payment_method}</span>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5 font-mono text-sm font-bold text-on-surface">
+                      {formatCurrency(order.amount || 0, { currencySymbol })}
+                    </td>
+                    <td className="px-8 py-5">
+                      {getStatusBadge(order.status)}
+                    </td>
+                    <td className="px-8 py-5 text-right text-on-surface-variant/30 group-hover:text-on-surface-variant transition-colors">
+                      <div className="flex justify-end gap-1">
+                        <Link to={`/orders/${order.order_id}`} className="p-2 hover:bg-surface-container rounded-md transition-all" title="View Details">
+                           <Eye size={16} />
+                        </Link>
+                        <button className="p-2 hover:bg-surface-container rounded-md transition-all" title="Print Invoice">
+                           <FileText size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteClick(order.order_id!)} 
+                          className="p-2 hover:bg-error/5 hover:text-error rounded-md transition-all"
+                          title="Delete Order"
+                        >
+                           <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <Pagination
+          page={page}
+          setPage={setPage}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
+          total={total}
+        />
       </Card>
 
-      {/* Asymmetric Detail Section (Bento Inspired) */}
+      {/* Asymmetric Detail Section (Preserved Bento UI) */}
       <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 p-8" variant="elevated">
           <div className="flex items-center justify-between mb-8">
@@ -263,7 +344,7 @@ export function Orders() {
             <p className="text-4xl font-headline font-extrabold tracking-tighter mb-4">42</p>
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest">
               <TrendingUp size={18} />
-              <span>12% more than yesterday</span>
+              <span>12% change</span>
             </div>
           </Card>
 
@@ -275,6 +356,18 @@ export function Orders() {
           </Card>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setOrderToDelete(null);
+        }}
+        onConfirm={processDelete}
+        title="Delete Order"
+        message="Are you sure you want to delete this order? This will remove the transaction record from the system permanently. This action cannot be undone."
+        loading={deleteOrder.isPending}
+      />
 
       {/* Contextual FAB */}
       <Link

@@ -13,7 +13,7 @@ export function useOrders() {
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       return data as Order[];
     }
@@ -27,7 +27,7 @@ export function useOrders() {
         .insert([newOrder])
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -45,7 +45,7 @@ export function useOrders() {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -61,7 +61,7 @@ export function useOrders() {
         .from('orders')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -75,6 +75,34 @@ export function useOrders() {
     error,
     createOrder,
     updateOrder,
-    deleteOrder
+    deleteOrder,
   };
+}
+
+export function useOrderDetails(orderId: string | undefined) {
+  return useQuery({
+    queryKey: ['orders', orderId],
+    queryFn: async () => {
+      if (!orderId) return null;
+
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            *,
+            stock_receipt_item:stock_receipt_items (
+              *,
+              product:products (*)
+            )
+          )
+        `)
+        .eq('order_id', orderId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orderId
+  });
 }

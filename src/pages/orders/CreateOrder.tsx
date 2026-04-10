@@ -40,6 +40,7 @@ export function CreateOrder() {
       id: '1',
       name: 'Signature Wool Blazer',
       sku: 'AT-BL-001 • Navy Blue • Size 48',
+      details: 'Wool blend | Dry clean only',
       price: 850.00,
       quantity: 1,
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBo7P33AKD1f6VekRMnq7Aro7j_Af01seriw-kfrWiZ9iFp61iMxI3RlJW9aceVvf3bk_YK1uohTo1UTDFBLpgwVoRrS0izLEFU_RUye872LSserdbDANQIcUFUdlvu6ymwqw2PmiIfixKEasKp-bGqdyIPLb1T8S-J7-pw51F9dY4Yq8yAfnGWLe1q0lvx4scKio-KxM3hPC75-KeVrCcn90d0Cna486eZkECmBq2E8-Nja30WPaYhd3jVYvmUcbUNItVKbHlZ37Y'
@@ -48,6 +49,7 @@ export function CreateOrder() {
       id: '2',
       name: 'Atelier Craft Sneakers',
       sku: 'AT-SK-442 • Crimson • Size 42',
+      details: 'Leather upper | Rubber sole',
       price: 420.00,
       quantity: 2,
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCy9539pVcWRC6vbj2EEd9u4Lu4k3w-RZlZan_1EpDocLxB4Yt0-70oWYlt5ESDYernMg-41zF9XADXyGjmLJicxBOMr2rNp73h0JlcZxo10GV-Y336855qR8epNmcLZddwREHGJzxqe23zEwWBkw40VR_GsWOUXsI_CVWIBVDPmNFDIeFSkaM74szJ7mcRCSR9l8l09kR13hZQPvs1d21G5SV-ldz6_w6rwr3_H-_HYEiqAtUmgaFaGrQsR7msBmrpTSiQyLJ_QnA'
