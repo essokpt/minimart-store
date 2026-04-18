@@ -114,12 +114,11 @@ export function useStock() {
   });
 
   const createStockReceiptItem = useMutation({
-    mutationFn: async (newStockReceiptItem: Partial<Stock_receiptitems>) => {
+    mutationFn: async (newStockReceiptItem: Partial<Stock_receiptitems>[]) => {
       const { data, error } = await supabase
         .from('stock_receipt_items')
-        .insert([newStockReceiptItem])
-        .select()
-        .single();
+        .insert(newStockReceiptItem)
+        .select();
 
       if (error) throw error;
       return data;
@@ -236,6 +235,34 @@ export function useStock() {
     }
   });
 
+  const getProductLocations = async (productId: string) => {
+    const { data, error } = await supabase
+      .from('stock_receipt_items')
+      .select('area_id:area, quantity, area_data:areas!area(name)')
+      .eq('product', productId)
+      .gt('quantity', 0);
+
+    if (error) return [];
+
+    const locations: Record<string, { area_id: string, name: string, quantity: number }> = {};
+    data?.forEach(item => {
+      const areaId = item.area_id;
+      if (!areaId) return;
+      const name = (item as any).area_data?.name || 'Unknown';
+      if (locations[areaId]) {
+        locations[areaId].quantity += item.quantity;
+      } else {
+        locations[areaId] = {
+          area_id: areaId,
+          name: name,
+          quantity: item.quantity
+        };
+      }
+    });
+
+    return Object.values(locations);
+  };
+
   return {
     stocks,
     stockArea,
@@ -254,6 +281,7 @@ export function useStock() {
     errorReceipt,
     createStockReceipt,
     createStockReceiptItem,
+    getProductLocations,
     // stockReceiptDetails,
     // isLoadingReceiptDetails,
     // errorReceiptDetails

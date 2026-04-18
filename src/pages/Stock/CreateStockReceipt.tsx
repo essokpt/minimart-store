@@ -15,7 +15,8 @@ import {
   Save,
   Send,
   AlertTriangle,
-  Upload
+  Upload,
+  Edit
 } from 'lucide-react';
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
@@ -40,23 +41,28 @@ interface ReceiptItem {
   id: string;
   name: string;
   sku: string;
+  barcode: string;
   currentStock: number;
   receivedQty: number;
   unitCost: number;
   image: string;
   location_name: string;
   area: string;
+  lot_number?: string;
+  expiry_date?: string;
 }
 
 export function CreateStockReceipt() {
-  const { createStockReceipt, createStockReceiptItem, stockArea } = useStock();
+  const { createStockReceipt, createStockReceiptItem, stockArea, getProductLocations } = useStock();
   const { products, createProduct, uploadImage } = useInventory();
   const { categories } = useCategories();
   const [location, setLocation] = useState({ area_id: '', name: '' });
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [productLocations, setProductLocations] = useState<{ area_id: string, name: string, quantity: number }[]>([]);
   const [receivedItems, setReceivedItems] = useState<ReceiptItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [editingItem, setEditingItem] = useState<ReceiptItem | null>(null);
   //const [supplier, setSupplier] = useState('');
   //const [deliveryNote, setDeliveryNote] = useState('');
   // Form states
@@ -79,6 +85,8 @@ export function CreateStockReceipt() {
   const deliveryNote = watch('notes');
   const [itemQty, setItemQty] = useState(1);
   const [unitCost, setUnitCost] = useState(0);
+  const [sku, setSku] = useState('');
+  const [barcode, setBarcode] = useState('');
 
   // Product creation modal states
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -92,12 +100,32 @@ export function CreateStockReceipt() {
   const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPendingImageFile(file);
-    setImagePreviewUrl(URL.createObjectURL(file));
-  };
+  useEffect(() => {
+    const fetchLocations = async () => {
+      if (selectedProduct?.product_id) {
+        const locs = await getProductLocations(selectedProduct.product_id);
+        setProductLocations(locs);
+
+        // Auto-select the first location if it's the only one
+        if (locs.length === 1) {
+          setLocation({
+            area_id: locs[0].area_id,
+            name: locs[0].name
+          });
+        }
+      } else {
+        setProductLocations([]);
+      }
+    };
+    fetchLocations();
+  }, [selectedProduct?.product_id]);
+
+  // const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (!file) return;
+  //   setPendingImageFile(file);
+  //   setImagePreviewUrl(URL.createObjectURL(file));
+  // };
 
   const handleCreateProduct = async () => {
     const validated = productSchema.safeParse(newProduct);
@@ -140,22 +168,40 @@ export function CreateStockReceipt() {
     : [];
 
   const addItem = (product: Product) => {
-    if (!receivedItems.find(item => item.id === product.product_id)) {
+    const existingIndex = receivedItems.findIndex(item => item.id === product.product_id);
+
+    if (existingIndex > -1) {
+      // Increment quantity if exists
+      const updatedItems = [...receivedItems];
+      updatedItems[existingIndex].receivedQty += 1;
+      setReceivedItems(updatedItems);
+    } else {
+      // Add as new item
       setReceivedItems([...receivedItems, {
         id: product.product_id,
         name: product.name,
-        sku: product.barcode || '',
+        sku: '',
+        barcode: product.barcode || barcode,
         currentStock: product.stock_value || 0,
         image: product.image_url || product.image || '',
-        receivedQty: itemQty,
-        unitCost: unitCost || product.cost_price,
-        location_name: location.name,
-        area: location.area_id,
+        receivedQty: 1,
+        unitCost: product.cost_price || 0,
+        location_name: '',
+        area: '',
       }]);
     }
+
     setSearchQuery('');
     setItemQty(1);
     setUnitCost(0);
+    setSku('');
+    setBarcode('');
+  };
+
+  const updateReceivedItem = (id: string, updates: Partial<ReceiptItem>) => {
+    setReceivedItems(items => items.map(item =>
+      item.id === id ? { ...item, ...updates } : item
+    ));
   };
 
   const removeItem = (id: string) => {
@@ -176,39 +222,44 @@ export function CreateStockReceipt() {
     try {
       const newStockReceipt = await createStockReceipt.mutateAsync(newStockReceiptData);
       // Optionally create items if API expects them separately
-      if (receivedItems && receivedItems.length > 0) {
-        for (const item of receivedItems) {
-          const newItem: any = {
-            receipt_id: newStockReceipt.receipt_id || newStockReceipt.id || newStockReceipt.receipt_number,
-            product: item.id,
-            lot_number: (item as any).lot_number || null,
-            quantity: item.receivedQty,
-            unit_cost: item.unitCost,
-            area: item.area || null,
-          };
-          try {
-            await createStockReceiptItem.mutateAsync(newItem);
-          } catch (e) {
-            // continue creating other items even if one fails
-            console.error('Failed to create receipt item', e);
-          }
-        }
+      if (newStockReceipt && receivedItems.length > 0) {
+        const newStockItems = receivedItems.map(item => ({
+          // ...item,
+          receipt_id: newStockReceipt.receipt_id,
+          product: item.id,
+          barcode: item.barcode,
+          sku: item.sku,
+          lot_number: item.lot_number || null,
+          expires_at: item.expiry_date || null,
+          quantity: item.receivedQty,
+          unit_cost: item.unitCost,
+          area: item.area || null,
+        }));
+        // for (const item of receivedItems) {
+        //   const newItem: any = {
+        //     receipt_id: newStockReceipt.receipt_id || newStockReceipt.id || newStockReceipt.receipt_number,
+        //     product: item.id,
+        //     lot_number: (item as any).lot_number || null,
+        //     quantity: item.receivedQty,
+        //     unit_cost: item.unitCost,
+        //     area: item.area || null,
+        //   };
+        //console.log(newStockItems);
+        await createStockReceiptItem.mutateAsync(newStockItems as any[]);
       }
-
-      // Navigate to newly created receipt detail page
-      const receiptId = newStockReceipt.receipt_id || newStockReceipt.id || newStockReceipt.receipt_number;
-      if (receiptId) {
-        navigate(`/stock/receipts`);
-        return;
-      }
-
-      // fallback: clear form and show success
-      setIsSuccess(true);
-      setTimeout(() => setIsSuccess(false), 3000);
-      setReceivedItems([]);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to create stock receipt:', err);
     }
+
+    // Navigate to newly created receipt detail page
+
+
+    // fallback: clear form and show success
+    setIsSuccess(true);
+    setTimeout(() => setIsSuccess(false), 3000);
+    setReceivedItems([]);
+    navigate(`/stock/receipts`);
+
     //setModalError(err?.message || 'Failed to save store. Please check your connection and try again.');
   };
 
@@ -243,40 +294,26 @@ export function CreateStockReceipt() {
         </div>
       </header>
 
-      <div className="grid grid-cols-12 gap-8">
-        {/* Left Column: Form Section */}
-        <div className="col-span-12 xl:col-span-5 space-y-8">
-          {/* Supplier & Logistics Card */}
-          <Card className="p-8" variant="elevated">
-            <div className="flex items-center gap-2 mb-6">
-              <Truck className="text-primary" size={20} />
-              <h2 className="text-lg font-headline font-bold">Supplier Information</h2>
-            </div>
-            <div className="space-y-5">
-              <Input
-                label="Supplier Entity"
-                placeholder="Search or select supplier..."
-                icon={<Building2 size={18} />}
-                value={supplier}
-                onChange={(e) => form.setValue('supplier_name', e.target.value)}
-              />
-              
-            </div>
-          </Card>
-
-          {/* Item Entry Form */}
-          <Card className="p-8 border border-outline-variant/10" variant="elevated">
-            <div className="flex items-center gap-2 mb-6">
-              <PlusCircle className="text-primary" size={20} />
-              <h2 className="text-lg font-headline font-bold">Add Inventory Item</h2>
-            </div>
-            <div className="space-y-5">
-              <div className="relative">
-                <div className="flex items-end gap-2">
+      <div className="space-y-8">
+        <Card className="overflow-hidden flex flex-col" variant="elevated">
+          {/* Unified Header: Supplier + Product Search */}
+          <div className="p-8 border-b border-outline-variant/10 bg-surface-container-low/30">
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
+              <div className="w-full lg:w-[350px]">
+                <Input
+                  label="Supplier Entity"
+                  placeholder="Enter supplier name..."
+                  icon={<Building2 size={18} />}
+                  value={supplier}
+                  onChange={(e) => form.setValue('supplier_name', e.target.value)}
+                />
+              </div>
+              <div className="flex-1 relative w-full">
+                <div className="flex items-end gap-3">
                   <div className="flex-1">
                     <Input
-                      label="Search Product"
-                      placeholder="SKU or Product Name..."
+                      label="Search and Add Product"
+                      placeholder="Start typing SKU or Product Name..."
                       icon={<Search size={18} />}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -284,61 +321,52 @@ export function CreateStockReceipt() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      setNewProduct(prev => ({
-                        ...prev,
-                        category_id: categories.length > 0 ? categories[0].category_id : ''
-                      }));
-                      setIsProductModalOpen(true);
-                    }}
-                    className="h-[42px] w-[42px] shrink-0 flex items-center justify-center bg-primary text-on-primary rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+                    onClick={() => setIsProductModalOpen(true)}
+                    className="h-[48px] px-6 flex items-center gap-2 bg-secondary text-on-secondary rounded-lg hover:bg-secondary/90 transition-all font-bold shadow-sm"
                     title="Create New Product"
                   >
                     <Plus size={20} />
+                    <span className="hidden sm:inline text-xs uppercase tracking-widest">New Product</span>
                   </button>
                 </div>
+
                 {searchQuery.trim().length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-surface-container-lowest border border-outline-variant/20 rounded-sm shadow-xl z-20 overflow-hidden max-h-[320px] overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-3 bg-surface-container-lowest border border-outline-variant/20 rounded-lg shadow-2xl z-20 overflow-hidden max-h-[320px] overflow-y-auto">
                     {filteredProducts.length > 0 ? (
                       <>
                         {filteredProducts.map(product => (
                           <button
                             key={product.product_id}
-                            onClick={() => {
-                              //console.log("seleproduct", product);
-                              setSelectedProduct(product)
-                              setSearchQuery('')
-                            }}
-                            className="w-full flex items-center gap-4 p-4 hover:bg-surface-container transition-colors text-left border-b border-outline-variant/10 last:border-0"
+                            onClick={() => addItem(product)}
+                            className="w-full flex items-center gap-4 p-4 hover:bg-primary/5 transition-colors text-left border-b border-outline-variant/10 last:border-0 group"
                           >
-                            <div className="w-10 h-10 rounded-sm bg-surface-container overflow-hidden shrink-0">
+                            <div className="w-12 h-12 rounded bg-surface-container overflow-hidden shrink-0 border border-outline-variant/20 group-hover:border-primary/30 transition-colors">
                               {(product.image_url || product.image) ? (
                                 <img src={product.image_url || product.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-on-surface-variant/30">
-                                  <Package size={16} />
+                                <div className="w-full h-full flex items-center justify-center text-on-surface-variant/20">
+                                  <Package size={20} />
                                 </div>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-on-surface truncate">{product.name}</p>
-                              <p className="text-[10px] text-on-surface-variant font-mono">{product.barcode || 'No SKU'} · Stock: {product.stock_value || 0}</p>
+                              <p className="text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors">{product.name}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] text-on-surface-variant font-mono bg-surface-container rounded px-1.5 py-0.5">{product.barcode || 'No Barcode'}</span>
+                                <span className="text-[10px] text-on-surface-variant/60 font-medium whitespace-nowrap">Stock: {product.stock_value || 0}</span>
+                              </div>
                             </div>
-                            <Plus size={18} className="text-primary ml-2 shrink-0" />
+                            <Plus size={18} className="text-primary opacity-0 group-hover:opacity-100 transition-all mr-2 shrink-0 scale-90 group-hover:scale-100" />
                           </button>
                         ))}
-                        <button
-                          onClick={() => setIsProductModalOpen(true)}
-                          className="w-full flex items-center justify-center gap-2 p-3 bg-surface-container-low hover:bg-surface-container transition-colors text-primary text-xs font-bold uppercase tracking-widest"
-                        >
-                          <PlusCircle size={14} />
-                          Create New Product
-                        </button>
                       </>
                     ) : (
-                      <div className="p-6 text-center space-y-3">
-                        <Package size={32} className="mx-auto text-on-surface-variant/20" />
-                        <p className="text-sm text-on-surface-variant">No products found for "<span className="font-bold text-on-surface">{searchQuery}</span>"</p>
+                      <div className="p-8 text-center space-y-4">
+                        <Package size={40} className="mx-auto text-on-surface-variant/10" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-bold text-on-surface">No products found</p>
+                          <p className="text-xs text-on-surface-variant">We couldn't find any results for "{searchQuery}"</p>
+                        </div>
                         <Button
                           size="sm"
                           variant="secondary"
@@ -353,189 +381,241 @@ export function CreateStockReceipt() {
                   </div>
                 )}
               </div>
-              {selectedProduct && (
-                <div
-                  className="w-full flex items-center gap-4 p-4 hover:bg-surface-container transition-colors text-left border-b border-outline-variant/10 last:border-0"
-                >
-                  <div className="w-10 h-10 rounded-sm bg-surface-container overflow-hidden shrink-0">
-                    {(selectedProduct.image_url || selectedProduct.image) ? (
-                      <img src={selectedProduct.image_url || selectedProduct.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-on-surface-variant/30">
-                        <Package size={16} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-on-surface truncate">{selectedProduct.name}</p>
-                    <p className="text-[10px] text-on-surface-variant font-mono">{selectedProduct.barcode || 'No SKU'} · Stock: {selectedProduct.stock_value || 0}</p>
-                  </div>
-                  <Plus size={18} className="text-primary ml-2 shrink-0" />
-                </div>
-              )
-              }
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Quantity"
-                  type="number"
-                  value={itemQty}
-                  onChange={(e) => setItemQty(parseInt(e.target.value))}
-                />
-                <Input
-                  label="Unit Cost ($)"
-                  type="number"
-                  placeholder="0.00"
-                  value={unitCost}
-                  onChange={(e) => setUnitCost(parseFloat(e.target.value))}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="Batch / Lot Number" placeholder="BATCH-2023-A" />
-                <Input label="Expiry Date" type="date" />
-              </div>
-
-              <div className="space-y-2">
-                <Select
-                  label="Storage Destination"
-                  value={location.area_id}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    if (!id) {
-                      setLocation({ area_id: '', name: '' });
-                      return;
-                    }
-                    const area = stockArea?.find(a => a.area_id === id);
-                    if (area) {
-                      setLocation({
-                        area_id: area.area_id,
-                        name: area.name
-                      });
-                    }
-                  }}
-                >
-                  <option value="">Select Storage Area</option>
-                  {stockArea?.map((area) => (
-                    <option key={area.area_id} value={area.area_id}>
-                      {area.name}
-                    </option>
-                  ))}
-                  {/* <option>Main Warehouse</option>
-                  <option>Front Shelf - A1</option>
-                  <option>Cold Storage Unit 3</option>
-                  <option>Aisle 4 Display</option> */}
-                </Select>
-              </div>
-              <Button
-                variant="secondary"
-                className="w-full py-4 mt-2 font-bold"
-                onClick={() => {
-                  addItem(selectedProduct as Product)
-                  setSelectedProduct(null)
-                  setItemQty(1)
-                  setUnitCost(0)
-                  setLocation({ area_id: '', name: '' })
-                }
-                }
-              >
-                Add to Receipt List
-              </Button>
-
-
             </div>
-          </Card>
-        </div>
+          </div>
 
-        {/* Right Column: Table & Summary */}
-        <div className="col-span-12 xl:col-span-7 space-y-8">
-          <Card className="overflow-hidden flex flex-col h-full min-h-[600px]" variant="elevated">
-            <div className="p-6 flex justify-between items-center border-b border-outline-variant/10">
-              <h2 className="text-lg font-headline font-bold">Items in Current Session</h2>
-              <span className="text-sm text-on-surface-variant font-medium">{receivedItems.length} items selected</span>
-            </div>
-
-            <div className="flex-1 overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-surface-container-low text-xs font-bold uppercase tracking-wider text-on-surface-variant/60">
-                  <tr>
-                    <th className="px-6 py-4">Item Details</th>
-                    <th className="px-6 py-4">Quantity</th>
-                    <th className="px-6 py-4">Location</th>
-                    <th className="px-6 py-4 text-right">Unit Cost</th>
-                    <th className="px-6 py-4"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-container">
-                  {receivedItems?.map(item => (
-                    <tr key={item.id} className="hover:bg-surface-container-low/50 transition-colors group">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded bg-surface-container overflow-hidden shrink-0">
-                            <img src={item.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          </div>
-                          <div>
-                            <div className="font-bold text-sm text-on-surface">{item.name}</div>
-                            <div className="text-xs text-on-surface-variant/60 font-mono">{item.sku}</div>
+          <div className="flex-1 overflow-x-auto min-h-[400px]">
+            <table className="w-full text-left">
+              <thead className="bg-surface-container-low text-[10px] font-black uppercase tracking-[0.15em] text-on-surface-variant/50 border-b border-outline-variant/10">
+                <tr>
+                  <th className="px-8 py-5">Item Details</th>
+                  <th className="px-8 py-5 w-40 text-center">Qty</th>
+                  <th className="px-8 py-5">Storage Destination</th>
+                  <th className="px-8 py-5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-container/30">
+                {receivedItems?.map(item => (
+                  <tr key={item.id} className="hover:bg-primary/[0.02] transition-colors group">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded border border-outline-variant/10 bg-surface-container overflow-hidden shrink-0">
+                          <img src={item.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-sm text-on-surface mb-0.5">{item.name}</div>
+                          <div className="flex gap-2">
+                            <span className="text-[10px] text-on-surface-variant/50 font-mono tracking-tighter">{item.barcode}</span>
+                            {item.sku && <span className="text-[10px] text-on-surface-variant/30 font-mono italic">({item.sku})</span>}
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium">{item.receivedQty} units</td>
-                      <td className="px-6 py-4">
-                        <Badge variant="primary" className="text-[10px] uppercase font-bold">{item.location_name}</Badge>
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm font-semibold">${item.unitCost.toFixed(2)}</td>
-                      <td className="px-6 py-4 text-right">
+                      </div>
+                    </td>
+                    <td className="px-8 py-5 text-center">
+                      <div className="flex items-center justify-center">
+                        <input
+                          type="number"
+                          className="w-20 bg-surface-container-low border border-outline-variant/10 rounded-lg px-3 py-2 text-center text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                          value={item.receivedQty}
+                          onChange={(e) => updateReceivedItem(item.id, { receivedQty: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-8 py-5">
+                      <select
+                        className="w-full max-w-[200px] bg-surface-container-low border border-outline-variant/10 rounded-lg px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer appearance-none"
+                        value={item.area}
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          const areaName = stockArea?.find(a => a.area_id === id)?.name || 'Unknown';
+                          updateReceivedItem(item.id, { area: id, location_name: areaName });
+                        }}
+                      >
+                        <option value="">Select Area</option>
+                        {stockArea?.map(area => (
+                          <option key={area.area_id} value={area.area_id}>{area.name}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setEditingItem(item)}
+                          className="p-2 text-on-surface-variant/40 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                          title="Full Edit"
+                        >
+                          <Edit size={18} />
+                        </button>
                         <button
                           onClick={() => removeItem(item.id)}
-                          className="text-on-surface-variant/40 hover:text-error transition-colors"
+                          className="p-2 text-on-surface-variant/40 hover:text-error hover:bg-error/10 rounded-lg transition-all"
+                          title="Remove"
                         >
                           <Trash2 size={18} />
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {receivedItems.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-20 text-center">
-                        <Package size={48} className="mx-auto text-on-surface-variant/20 mb-4" />
-                        <p className="text-on-surface-variant font-medium">No items in this session.</p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {receivedItems.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-8 py-32 text-center mt-8">
+                      <div className="max-w-xs mx-auto space-y-4">
+                        <div className="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center mx-auto">
+                          <Package size={32} className="text-on-surface-variant/20" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-bold text-on-surface">Empty Receipt Session</p>
+                          <p className="text-xs text-on-surface-variant">There are currently no items added to this stock receipt. Search for products above to get started.</p>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-            {/* Receipt Summary Footer */}
-            <div className="p-8 bg-surface-container-low border-t border-outline-variant/20">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                {/* <div className="space-y-2">
-                  <p className="text-sm font-semibold text-on-surface-variant/60 uppercase tracking-wider">Session Summary</p>
-                  <div className="flex gap-6">
-                    <div className="flex flex-col">
-                      <span className="text-2xl font-headline font-extrabold text-on-surface">{totalUnits}</span>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Total Units</span>
-                    </div>
-                    <div className="h-10 w-[1px] bg-outline-variant/50 self-center"></div>
-                    <div className="flex flex-col">
-                      <span className="text-2xl font-headline font-extrabold text-primary">${totalValuation.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Total Valuation</span>
-                    </div>
-                  </div>
-                </div> */}
-                <div className="w-full md:w-auto flex gap-4">
-                  <Button variant="outline" className="flex-1 md:flex-none" onClick={() => setReceivedItems([])}>
-                    Discard Draft
-                  </Button>
-                  <Button className="flex-1 md:flex-none px-10" onClick={() => form.handleSubmit(handleSubmit)()} disabled={receivedItems.length === 0}>
-                    Confirm & Post Receipt
-                  </Button>
+          {/* Receipt Summary Footer */}
+          <div className="p-8 bg-surface-container-low border-t border-outline-variant/20">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+              <div className="flex items-center gap-10">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/50 mb-1">Total Items</span>
+                  <span className="text-2xl font-headline font-black text-on-surface">{receivedItems.length}</span>
+                </div>
+                <div className="w-[1px] h-10 bg-outline-variant/20"></div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/50 mb-1">Total Units</span>
+                  <span className="text-2xl font-headline font-black text-on-surface">
+                    {receivedItems.reduce((acc, item) => acc + (item.receivedQty || 0), 0)}
+                  </span>
                 </div>
               </div>
+
+              <div className="flex gap-4 w-full md:w-auto">
+                <Button
+                  variant="outline"
+                  className="flex-1 md:flex-none h-12 px-8 font-bold border-2"
+                  onClick={() => setReceivedItems([])}
+                >
+                  Discard Draft
+                </Button>
+                <Button
+                  className="flex-1 md:flex-none h-12 px-10 font-bold shadow-lg shadow-primary/20"
+                  onClick={() => form.handleSubmit(handleSubmit)()}
+                  disabled={receivedItems.length === 0}
+                >
+                  Confirm & Post Stock
+                </Button>
+              </div>
             </div>
-          </Card>
-        </div>
+          </div>
+        </Card>
       </div>
+
+      <Modal
+        isOpen={!!editingItem}
+        onClose={() => setEditingItem(null)}
+        title="Edit Line Item Details"
+        maxWidth="w-[550px]"
+      >
+        {(() => {
+          const activeItem = receivedItems.find(i => i.id === editingItem?.id) || editingItem;
+          if (!activeItem) return null;
+
+          return (
+            <div className="space-y-6 pt-2 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="flex items-center gap-4 p-4 bg-surface-container-low rounded-xl border border-outline-variant/10">
+                <div className="w-16 h-16 rounded-lg bg-white overflow-hidden shrink-0 border border-outline-variant/10">
+                  <img src={activeItem.image} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-on-surface">{activeItem.name}</h3>
+                  <p className="text-xs text-on-surface-variant font-mono">{activeItem.barcode}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Quantity to Receive"
+                  type="number"
+                  value={activeItem.receivedQty}
+                  onChange={(e) => updateReceivedItem(activeItem.id, { receivedQty: parseInt(e.target.value) || 0 })}
+                />
+                <Input
+                  label="Unit Cost Price"
+                  type="number"
+                  step="0.01"
+                  icon={<span className="text-sm font-bold">$</span>}
+                  value={activeItem.unitCost}
+                  onChange={(e) => updateReceivedItem(activeItem.id, { unitCost: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Barcode / EAN"
+                  value={activeItem.barcode}
+                  onChange={(e) => updateReceivedItem(activeItem.id, { barcode: e.target.value })}
+                />
+                <Input
+                  label="SKU Code"
+                  value={activeItem.sku}
+                  onChange={(e) => updateReceivedItem(activeItem.id, { sku: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Lot / Batch Number"
+                  placeholder="BATCH-001"
+                  value={activeItem.lot_number || ''}
+                  onChange={(e) => updateReceivedItem(activeItem.id, { lot_number: e.target.value })}
+                />
+                <Input
+                  label="Expiry Date"
+                  type="date"
+                  value={activeItem.expiry_date || ''}
+                  onChange={(e) => updateReceivedItem(activeItem.id, { expiry_date: e.target.value })}
+                />
+              </div>
+
+              <Select
+                label="Storage Destination"
+                value={activeItem.area}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  const areaName = stockArea?.find(a => a.area_id === id)?.name || '';
+                  updateReceivedItem(activeItem.id, { area: id, location_name: areaName });
+                }}
+              >
+                <option value="">Select Area</option>
+                {stockArea?.map(area => (
+                  <option key={area.area_id} value={area.area_id}>{area.name}</option>
+                ))}
+              </Select>
+
+              <div className="pt-4 flex gap-3 sticky bottom-0 bg-surface-container-lowest pb-2">
+                <Button
+                  variant="secondary"
+                  className="flex-1 h-12 font-bold"
+                  onClick={() => setEditingItem(null)}
+                >
+                  Close
+                </Button>
+                <Button
+                  className="flex-1 h-12 font-bold shadow-lg shadow-primary/20"
+                  onClick={() => setEditingItem(null)}
+                >
+                  Save Details
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
+
 
       {isSuccess && (
         <motion.div
@@ -581,6 +661,7 @@ export function CreateStockReceipt() {
               }
               const newProduct = await createProduct.mutateAsync(payload);
               setSelectedProduct(newProduct);
+              setBarcode(newProduct.barcode || '');
               setIsProductModalOpen(false);
               setPendingImageFile(null);
               setImagePreviewUrl('');

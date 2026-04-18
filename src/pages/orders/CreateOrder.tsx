@@ -22,12 +22,15 @@ import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { CustomerForm } from '../../components/form/CustomerForm';
 import { CustomerInput } from '../../lib/validations';
+import { useInventory } from '../inventory/useInventory';
+import { Order, Product } from '@/src/types';
+import { usePOS } from '../pos/usePOS';
 
 interface OrderItem {
-  id: string;
+  product_id: string;
   name: string;
   sku: string;
-  details: string;
+  barcode: string;
   price: number;
   quantity: number;
   image: string;
@@ -35,52 +38,104 @@ interface OrderItem {
 
 export function CreateOrder() {
   const navigate = useNavigate();
-  const [items, setItems] = useState<OrderItem[]>([
-    {
-      id: '1',
-      name: 'Signature Wool Blazer',
-      sku: 'AT-BL-001 • Navy Blue • Size 48',
-      details: 'Wool blend | Dry clean only',
-      price: 850.00,
-      quantity: 1,
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBo7P33AKD1f6VekRMnq7Aro7j_Af01seriw-kfrWiZ9iFp61iMxI3RlJW9aceVvf3bk_YK1uohTo1UTDFBLpgwVoRrS0izLEFU_RUye872LSserdbDANQIcUFUdlvu6ymwqw2PmiIfixKEasKp-bGqdyIPLb1T8S-J7-pw51F9dY4Yq8yAfnGWLe1q0lvx4scKio-KxM3hPC75-KeVrCcn90d0Cna486eZkECmBq2E8-Nja30WPaYhd3jVYvmUcbUNItVKbHlZ37Y'
-    },
-    {
-      id: '2',
-      name: 'Atelier Craft Sneakers',
-      sku: 'AT-SK-442 • Crimson • Size 42',
-      details: 'Leather upper | Rubber sole',
-      price: 420.00,
-      quantity: 2,
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCy9539pVcWRC6vbj2EEd9u4Lu4k3w-RZlZan_1EpDocLxB4Yt0-70oWYlt5ESDYernMg-41zF9XADXyGjmLJicxBOMr2rNp73h0JlcZxo10GV-Y336855qR8epNmcLZddwREHGJzxqe23zEwWBkw40VR_GsWOUXsI_CVWIBVDPmNFDIeFSkaM74szJ7mcRCSR9l8l09kR13hZQPvs1d21G5SV-ldz6_w6rwr3_H-_HYEiqAtUmgaFaGrQsR7msBmrpTSiQyLJ_QnA'
-    },
-  ]);
 
   const [shippingMethod, setShippingMethod] = useState<'Standard' | 'Express' | 'Pickup'>('Standard');
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const { products, createProduct, uploadImage } = useInventory();
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const { checkout, createOrderItems } = usePOS();
 
-  const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const tax = subtotal * 0.10;
+  const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const tax = subtotal * 0.07;
   const shippingCost = shippingMethod === 'Express' ? 15.00 : 0;
-  const discount = 127.00; // Mock discount
+  const discount = 0.00; // Mock discount
   const total = subtotal + tax + shippingCost - discount;
 
+  // Filter real products from database
+  const filteredProducts = searchQuery.trim().length > 0
+    ? products.filter(p =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.barcode?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (p.brand?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+    ).slice(0, 8)
+    : [];
+
   const updateQuantity = (id: string, delta: number) => {
-    setItems(prev => prev.map(item =>
-      item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
+    setOrderItems(prev => prev.map(item =>
+      item.product_id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
     ));
   };
 
   const removeItem = (id: string) => {
-    setItems(prev => prev.filter(item => item.id !== id));
+    setOrderItems(prev => prev.filter(item => item.product_id !== id));
   };
+
+  const addItem = (product: Product) => {
+    const existingIndex = orderItems.findIndex(item => item.product_id === product.product_id);
+
+    if (existingIndex > -1) {
+      // Increment quantity if exists
+      const updatedItems = [...orderItems];
+      updatedItems[existingIndex].quantity += 1;
+      setOrderItems(updatedItems);
+    } else {
+      // Add as new item
+      setOrderItems([...orderItems, {
+        product_id: product.product_id,
+        name: product.name,
+        sku: '',
+        barcode: product.barcode || '',
+        // currentStock: product.stock_value || 0,
+        image: product.image_url || product.image || '',
+        quantity: 1,
+        price: product.unit_price || 0,
+      }]);
+    }
+
+    setSearchQuery('');
+
+  };
+
 
   const handleCustomerSubmit = async (customerData: CustomerInput) => {
     setIsSubmitting(true);
+    const orderData: Partial<Order> = {
+      order_number: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+      customer: customerData.fullName,
+      status: 'Confirmed',
+      order_type: 'Online/Call-in',
+      payment_method: 'Bank Transfer',
+      cash_received: 0,
+      change: 0,
+      amount: total,
+    };
+    console.log('create new order', customerData)
+    try {
+      if (orderItems.length > 0) {
+        // orderData already has status: 'Completed', etc.
+        const newOrder = await checkout.mutateAsync(orderData);
 
+        if (newOrder && newOrder.order_id) {
+          const newOrderItems = orderItems.map(item => ({
+            order_id: newOrder.order_id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            barcode: item.barcode,
+            unit_price: item.price,
+            sku: item.sku,
+            total: item.price * item.quantity,
+
+          }));
+          console.log('create order items', orderItems);
+          await createOrderItems.mutateAsync(newOrderItems as any[]);
+        }
+      }
+    } catch (error) {
+      console.error('Error creating order:', error);
+    }
     // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
 
     setIsSubmitting(false);
     setIsSuccess(true);
@@ -109,14 +164,129 @@ export function CreateOrder() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
         {/* Main Form Section */}
         <div className="xl:col-span-8 space-y-8">
+          <Card className="p-8" variant="elevated">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex-1 relative w-full">
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <Input
+                      label="Search and Add Product"
+                      placeholder="Start typing SKU or Product Name..."
+                      icon={<Search size={18} />}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    //   onClick={() => setIsProductModalOpen(true)}
+                    className="h-[48px] px-6 flex items-center gap-2 bg-secondary text-on-secondary rounded-lg hover:bg-secondary/90 transition-all font-bold shadow-sm"
+                    title="Create New Product"
+                  >
+                    <Plus size={20} />
+                    <span className="hidden sm:inline text-xs uppercase tracking-widest">New Product</span>
+                  </button>
+                </div>
 
+                {searchQuery.trim().length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-3 bg-surface-container-lowest border border-outline-variant/20 rounded-lg shadow-2xl z-20 overflow-hidden max-h-[320px] overflow-y-auto">
+                    {filteredProducts.length > 0 ? (
+                      <>
+                        {filteredProducts.map(product => (
+                          <button
+                            key={product.product_id}
+                            onClick={() => addItem(product)}
+                            className="w-full flex items-center gap-4 p-4 hover:bg-primary/5 transition-colors text-left border-b border-outline-variant/10 last:border-0 group"
+                          >
+                            <div className="w-12 h-12 rounded bg-surface-container overflow-hidden shrink-0 border border-outline-variant/20 group-hover:border-primary/30 transition-colors">
+                              {(product.image_url || product.image) ? (
+                                <img src={product.image_url || product.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-on-surface-variant/20">
+                                  <Package size={20} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors">{product.name}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] text-on-surface-variant font-mono bg-surface-container rounded px-1.5 py-0.5">{product.barcode || 'No Barcode'}</span>
+                                <span className="text-[10px] text-on-surface-variant/60 font-medium whitespace-nowrap">Stock: {product.stock_value || 0}</span>
+                              </div>
+                            </div>
+                            <Plus size={18} className="text-primary opacity-0 group-hover:opacity-100 transition-all mr-2 shrink-0 scale-90 group-hover:scale-100" />
+                          </button>
+                        ))}
+                      </>
+                    ) : (
+                      <div className="p-8 text-center space-y-4">
+                        <Package size={40} className="mx-auto text-on-surface-variant/10" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-bold text-on-surface">No products found</p>
+                          <p className="text-xs text-on-surface-variant">We couldn't find any results for "{searchQuery}"</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          // onClick={() => setIsProductModalOpen(true)}
+                          className="mx-auto"
+                        >
+                          <PlusCircle size={14} />
+                          Create New Product
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {orderItems.map((item) => (
+                <div key={item.product_id} className="flex items-center gap-6 group hover:bg-surface-container-low/50 p-3 rounded-xl transition-all">
+                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-container border border-outline-variant/10">
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-on-surface">{item.name}</h4>
+                    <p className="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider">{item.sku}</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center bg-surface-container-high rounded-lg p-1 border border-outline-variant/10">
+                      <button
+                        onClick={() => updateQuantity(item.product_id, -1)}
+                        className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-highest rounded-md transition-all text-on-surface-variant"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="w-8 text-center font-bold text-sm text-on-surface">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(item.product_id, 1)}
+                        className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-highest rounded-md transition-all text-on-surface-variant"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                    <div className="w-24 text-right">
+                      <p className="font-bold text-on-surface">{(item.price * item.quantity).toFixed(2)}</p>
+                    </div>
+                    <button
+                      onClick={() => removeItem(item.product_id)}
+                      className="p-2 text-on-surface-variant/40 hover:text-error transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
           {/* Customer Information Section */}
           <CustomerForm
             onSubmit={handleCustomerSubmit}
             isSubmitting={isSubmitting}
             submitLabel="Create Order"
           />
-
           {/* Shipping Method Section */}
           <Card className="p-8" variant="elevated">
             <div className="flex items-center gap-3 mb-8">
@@ -129,7 +299,7 @@ export function CreateOrder() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 { id: 'Standard', label: 'Standard Delivery', sub: '3-5 business days', price: 'Free' },
-                { id: 'Express', label: 'Express Courier', sub: 'Next day delivery', price: '€15.00' },
+                { id: 'Express', label: 'Express Courier', sub: 'Next day delivery', price: '15.00' },
                 { id: 'Pickup', label: 'Boutique Pickup', sub: 'Ready in 2 hours', price: 'Free' },
               ].map((method) => (
                 <label
@@ -156,69 +326,7 @@ export function CreateOrder() {
             </div>
           </Card>
 
-          {/* Order Items Section */}
-          <Card className="p-8" variant="elevated">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                  <ShoppingBag size={20} />
-                </div>
-                <h2 className="text-xl font-bold font-headline">Selected items</h2>
-              </div>
-              <Button variant="ghost" size="sm">
-                <PlusCircle size={18} />
-                <span>Add Product</span>
-              </Button>
-            </div>
 
-            <div className="space-y-6">
-              {items.map((item) => (
-                <div key={item.id} className="flex items-center gap-6 group hover:bg-surface-container-low/50 p-3 rounded-xl transition-all">
-                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-container border border-outline-variant/10">
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-on-surface">{item.name}</h4>
-                    <p className="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider">{item.sku}</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center bg-surface-container-high rounded-lg p-1 border border-outline-variant/10">
-                      <button
-                        onClick={() => updateQuantity(item.id, -1)}
-                        className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-highest rounded-md transition-all text-on-surface-variant"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span className="w-8 text-center font-bold text-sm text-on-surface">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.id, 1)}
-                        className="w-8 h-8 flex items-center justify-center hover:bg-surface-container-highest rounded-md transition-all text-on-surface-variant"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                    <div className="w-24 text-right">
-                      <p className="font-bold text-on-surface">€{(item.price * item.quantity).toFixed(2)}</p>
-                    </div>
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="p-2 text-on-surface-variant/40 hover:text-error transition-all opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              {/* Search bar to add items */}
-              <div className="mt-8">
-                <Input
-                  placeholder="Search catalog for more items..."
-                  icon={<Search size={18} />}
-                />
-              </div>
-            </div>
-          </Card>
         </div>
 
         {/* Sidebar Summary */}
@@ -229,22 +337,22 @@ export function CreateOrder() {
               <div className="space-y-4">
                 <div className="flex justify-between text-sm font-medium text-on-surface-variant">
                   <span>Subtotal</span>
-                  <span className="text-on-surface">€{subtotal.toFixed(2)}</span>
+                  <span className="text-on-surface">{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm font-medium text-on-surface-variant">
                   <span>Shipping cost</span>
-                  <span className="text-primary font-bold">{shippingCost === 0 ? 'Free' : `€${shippingCost.toFixed(2)}`}</span>
+                  <span className="text-primary font-bold">{shippingCost === 0 ? 'Free' : `${shippingCost.toFixed(2)}`}</span>
                 </div>
                 <div className="flex justify-between text-sm font-medium text-on-surface-variant">
-                  <span>Tax estimate (10%)</span>
-                  <span className="text-on-surface">€{tax.toFixed(2)}</span>
+                  <span>Tax estimate (7%)</span>
+                  <span className="text-on-surface">{tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm font-medium text-on-surface-variant items-center">
                   <div className="flex items-center gap-2">
                     <span>Discount</span>
                     <Badge variant="primary" size="sm">WELCOME10</Badge>
                   </div>
-                  <span className="text-error">-€{discount.toFixed(2)}</span>
+                  <span className="text-error">-{discount.toFixed(2)}</span>
                 </div>
 
                 <div className="h-px bg-outline-variant/20 my-6"></div>
@@ -252,7 +360,7 @@ export function CreateOrder() {
                 <div className="flex justify-between items-end">
                   <div>
                     <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Total amount</p>
-                    <p className="text-3xl font-extrabold text-on-surface font-headline">€{total.toFixed(2)}</p>
+                    <p className="text-3xl font-extrabold text-on-surface font-headline">{total.toFixed(2)}</p>
                   </div>
                   <span className="text-[10px] text-on-surface-variant/60 italic">Taxes included</span>
                 </div>

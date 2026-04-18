@@ -39,12 +39,12 @@ export const orderSchema = z.object({
 
 export const customerSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
-  address: z.string().min(5, "Street address is required"),
-  city: z.string().min(1, "City is required"),
-  postalCode: z.string().min(3, "Postal code is required"),
-  country: z.string().min(1, "Country is required"),
+  email: z.string().min(0),
+  phone: z.string().min(0),
+  address: z.string().min(0),
+  city: z.string().min(0),
+  postalCode: z.string().min(0),
+  country: z.string().min(0),
 });
 
 export const storeSettingsSchema = z.object({

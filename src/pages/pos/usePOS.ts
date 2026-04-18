@@ -14,7 +14,9 @@ export function usePOS() {
     const { data: receiptItem, error: rError } = await supabase
       .from('stock_receipt_items')
       .select('*, product:products(*, category:product_categories(*))')
-      .or(`sku.eq.${barcode},lot_number.eq.${barcode}`)
+      .or(`sku.eq.${barcode},barcode.eq.${barcode}`)
+      .eq('status', 'in-stock')
+      .gt('quantity', 0)
       .maybeSingle();
 
     if (receiptItem && receiptItem.product) {

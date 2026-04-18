@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   XCircle,
   Trash2,
-  FileText
+  FileText,
+  Edit
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -24,6 +25,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Select } from '../../components/ui/Select';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { Modal } from '../../components/ui/Modal';
 import { TableHeader, Pagination } from '../../components/table';
 
 import { useOrders } from './useOrders';
@@ -45,7 +47,7 @@ const getStatusBadge = (status: string) => {
 };
 
 export function Orders() {
-  const { orders, isLoading, error, deleteOrder } = useOrders();
+  const { orders, isLoading, error, deleteOrder, updateOrder } = useOrders();
   const { stores } = useStores();
   const activeStore = stores[0];
   const currencySymbol = activeStore?.currency_symbol || '$';
@@ -57,13 +59,16 @@ export function Orders() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
+  const [updateModalOrder, setUpdateModalOrder] = useState<Order | null>(null);
+  const [newStatus, setNewStatus] = useState<Order['status']>('Pending');
+
   const filteredOrders = (orders || []).filter(order => {
     const matchesStatus = statusFilter === 'All Orders' || order.status === statusFilter;
     const searchLower = (searchQuery || '').toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       (order.order_number || '').toLowerCase().includes(searchLower) ||
       (order.customer || '').toLowerCase().includes(searchLower);
-    
+
     return matchesStatus && matchesSearch;
   });
 
@@ -81,6 +86,25 @@ export function Orders() {
   const handleDeleteClick = (id: string) => {
     setOrderToDelete(id);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleUpdateStatusClick = (order: Order) => {
+    setUpdateModalOrder(order);
+    setNewStatus(order.status);
+  };
+
+  const processUpdateStatus = async () => {
+    if (!updateModalOrder) return;
+    try {
+      console.log('update order', updateModalOrder);
+      await updateOrder.mutateAsync({
+        id: updateModalOrder.order_id,
+        updates: { status: newStatus }
+      });
+      setUpdateModalOrder(null);
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    }
   };
 
   const processDelete = async () => {
@@ -180,7 +204,7 @@ export function Orders() {
       <Card className="overflow-hidden" variant="elevated">
         <TableHeader>
           <div className="flex items-center gap-2 min-w-[200px]">
-             <Select
+            <Select
               size="small"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -259,8 +283,8 @@ export function Orders() {
                     </td>
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-2 text-xs font-bold text-on-surface-variant">
-                         {order.payment_method === 'cash' ? <ShoppingBag size={12} /> : <Clock size={12} />}
-                         <span className="uppercase">{order.payment_method}</span>
+                        {order.payment_method === 'cash' ? <ShoppingBag size={12} /> : <Clock size={12} />}
+                        <span className="uppercase">{order.payment_method}</span>
                       </div>
                     </td>
                     <td className="px-8 py-5 font-mono text-sm font-bold text-on-surface">
@@ -272,17 +296,29 @@ export function Orders() {
                     <td className="px-8 py-5 text-right text-on-surface-variant/30 group-hover:text-on-surface-variant transition-colors">
                       <div className="flex justify-end gap-1">
                         <Link to={`/orders/${order.order_id}`} className="p-2 hover:bg-surface-container rounded-md transition-all" title="View Details">
-                           <Eye size={16} />
+                          <Eye size={16} />
                         </Link>
-                        <button className="p-2 hover:bg-surface-container rounded-md transition-all" title="Print Invoice">
-                           <FileText size={16} />
+                        <button
+                          onClick={() => handleUpdateStatusClick(order)}
+                          disabled={order.order_type?.toLowerCase() === 'pos' || order.status?.toLowerCase() === 'completed'}
+                          className={`p-2 rounded-md transition-all ${
+                            order.order_type?.toLowerCase() === 'pos' || order.status?.toLowerCase() === 'completed'
+                              ? 'opacity-30 cursor-not-allowed'
+                              : 'hover:bg-surface-container'
+                          }`}
+                          title={(order.order_type?.toLowerCase() === 'pos' || order.status?.toLowerCase() === 'completed') ? "Cannot edit POS or completed orders" : "Update Status"}
+                        >
+                          <Edit size={16} />
                         </button>
-                        <button 
-                          onClick={() => handleDeleteClick(order.order_id!)} 
+                        <button className="p-2 hover:bg-surface-container rounded-md transition-all" title="Print Invoice">
+                          <FileText size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(order.order_id!)}
                           className="p-2 hover:bg-error/5 hover:text-error rounded-md transition-all"
                           title="Delete Order"
                         >
-                           <Trash2 size={16} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
@@ -356,6 +392,40 @@ export function Orders() {
           </Card>
         </div>
       </div>
+
+      <Modal
+        isOpen={!!updateModalOrder}
+        onClose={() => setUpdateModalOrder(null)}
+        title="Update Order Status"
+        maxWidth="max-w-md"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setUpdateModalOrder(null)}>Cancel</Button>
+            <Button
+              onClick={processUpdateStatus}
+              loading={updateOrder.isPending}
+            >
+              Save Status
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-on-surface-variant">Update the status for order <strong className="text-primary">{updateModalOrder?.order_number}</strong>.</p>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Status</label>
+            <Select
+              value={newStatus}
+              onChange={(e) => setNewStatus(e.target.value as Order['status'])}
+              className="w-full"
+            >
+              {['Pending', 'Processing', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled', 'Completed'].map(status => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </Select>
+          </div>
+        </div>
+      </Modal>
 
       <ConfirmModal
         isOpen={isDeleteModalOpen}

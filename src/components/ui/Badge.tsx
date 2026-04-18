@@ -6,33 +6,38 @@ interface BadgeProps {
   variant?: 'primary' | 'secondary' | 'tertiary' | 'error' | 'success' | 'warning' | 'info';
   className?: string;
   size?: 'sm' | 'md';
+  onClick?: () => void;
 }
 
 export function Badge({ 
   children, 
   variant = 'secondary', 
   className = '', 
-  size = 'md' 
+  size = 'md',
+  onClick
 }: BadgeProps) {
   const baseStyles = 'inline-flex items-center justify-center font-bold uppercase tracking-widest border rounded-sm';
   
   const variants = {
-    primary: 'bg-primary/10 text-primary border-primary/20',
-    secondary: 'bg-secondary-container/50 text-on-secondary-container border-outline-variant/30',
-    tertiary: 'bg-tertiary/10 text-tertiary border-tertiary/20',
-    error: 'bg-error/10 text-error border-error/20',
-    success: 'bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-900/30 dark:text-green-400',
-    warning: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:bg-amber-900/30 dark:text-amber-400',
-    info: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-900/30 dark:text-blue-400',
+    primary: 'bg-primary/20 text-primary border-primary/30',
+    secondary: 'bg-secondary-container/80 text-on-secondary-container border-outline-variant/50',
+    tertiary: 'bg-tertiary/20 text-tertiary border-tertiary/30',
+    error: 'bg-error/20 text-error border-error/30',
+    success: 'bg-green-500/20 text-green-700 border-green-500/40 dark:bg-green-900/40 dark:text-green-300',
+    warning: 'bg-amber-500/20 text-amber-700 border-amber-500/40 dark:bg-amber-900/40 dark:text-amber-300',
+    info: 'bg-blue-500/20 text-blue-700 border-blue-500/40 dark:bg-blue-900/40 dark:text-blue-300',
   };
 
   const sizes = {
-    sm: 'px-2 py-0.5 text-[8px]',
-    md: 'px-3 py-1 text-[9px]',
+    sm: 'px-2.5 py-1 text-[10px]',
+    md: 'px-3.5 py-1.5 text-[11px]',
   };
 
   return (
-    <span className={cn(baseStyles, variants[variant], sizes[size], className)}>
+    <span 
+      className={cn(baseStyles, variants[variant], sizes[size], className)}
+      onClick={onClick}
+    >
       {children}
     </span>
   );

@@ -42,7 +42,7 @@ export function useOrders() {
       const { data, error } = await supabase
         .from('orders')
         .update(updates)
-        .eq('id', id)
+        .eq('order_id', id)
         .select()
         .single();
 
@@ -60,7 +60,7 @@ export function useOrders() {
       const { error } = await supabase
         .from('orders')
         .delete()
-        .eq('id', id);
+        .eq('order_id', id);
 
       if (error) throw error;
     },
@@ -91,10 +91,7 @@ export function useOrderDetails(orderId: string | undefined) {
           *,
           order_items (
             *,
-            stock_receipt_item:stock_receipt_items (
-              *,
-              product:products (*)
-            )
+            product:products (*)
           )
         `)
         .eq('order_id', orderId)

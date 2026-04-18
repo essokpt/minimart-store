@@ -1,16 +1,16 @@
 import { motion } from 'motion/react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  User, 
-  CreditCard, 
-  Banknote, 
-  QrCode, 
-  CheckCircle2, 
-  Clock, 
-  XCircle, 
-  Printer, 
+import {
+  ArrowLeft,
+  Calendar,
+  User,
+  CreditCard,
+  Banknote,
+  QrCode,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Printer,
   ShoppingBag,
   MapPin,
   ExternalLink,
@@ -57,6 +57,8 @@ export function OrderDetail() {
   if (isLoading) return <div className="h-[60vh] flex items-center justify-center"><Loading /></div>;
   if (error || !order) return <ErrorState onRetry={() => window.location.reload()} />;
 
+
+  console.log('order', order);
   const subtotal = order.order_items?.reduce((sum: number, item: any) => sum + (item.total || 0), 0) || 0;
   const taxRate = (activeStore?.tax_rate || 0) / 100;
   const totalAmount = order.amount || subtotal;
@@ -119,20 +121,20 @@ export function OrderDetail() {
                 </thead>
                 <tbody className="divide-y divide-outline-variant/5">
                   {order.order_items?.map((item: any) => {
-                     const product = item.stock_receipt_item?.product;
-                     return (
+                    const product = item.stock_receipt_item?.product;
+                    return (
                       <tr key={item.order_item_id} className="hover:bg-surface-container-low transition-colors">
                         <td className="px-8 py-5">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded bg-surface-container overflow-hidden border border-outline-variant/20">
-                              <img 
-                                src={product?.image_url || product?.image || '/placeholder-product.png'} 
-                                alt={product?.name || 'Product'} 
+                              <img
+                                src={item.product?.image_url || item.product?.image || '/placeholder-product.png'}
+                                alt={item.product?.name || 'Product'}
                                 className="w-full h-full object-cover"
                               />
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-on-surface">{product?.name || 'Unknown Product'}</p>
+                              <p className="text-sm font-bold text-on-surface">{item.product?.name || 'Unknown Product'}</p>
                               <p className="text-[10px] text-on-surface-variant/60 uppercase tracking-tighter">SKU: {item.stock_receipt_item?.sku || 'N/A'}</p>
                             </div>
                           </div>
@@ -150,43 +152,43 @@ export function OrderDetail() {
 
           {/* Customer & Shipping Detail Content */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <Card className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    <User size={20} />
-                  </div>
-                  <h4 className="font-bold">Customer Information</h4>
+            <Card className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <User size={20} />
                 </div>
-                <div className="space-y-4">
-                   <div>
-                      <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Name</p>
-                      <p className="text-sm font-medium">{order.customer || 'Guest Customer'}</p>
-                   </div>
-                   <div>
-                      <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Contact Information</p>
-                      <p className="text-sm font-medium opacity-60 italic text-xs">No contact details provided</p>
-                   </div>
+                <h4 className="font-bold">Customer Information</h4>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Name</p>
+                  <p className="text-sm font-medium">{order.customer || 'Guest Customer'}</p>
                 </div>
-             </Card>
+                <div>
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Contact Information</p>
+                  <p className="text-sm font-medium opacity-60 italic text-xs">No contact details provided</p>
+                </div>
+              </div>
+            </Card>
 
-             <Card className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
-                    <MapPin size={20} />
-                  </div>
-                  <h4 className="font-bold">Shipping/Fulfillment</h4>
+            <Card className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                  <MapPin size={20} />
                 </div>
-                <div className="space-y-4">
-                   <div>
-                      <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Order Type</p>
-                      <Badge variant="secondary" className="mt-1 uppercase text-[10px]">{order.order_type || 'Manual'}</Badge>
-                   </div>
-                   <div>
-                      <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Location</p>
-                      <p className="text-sm font-medium">{activeStore?.name || 'Main Terminal'}</p>
-                   </div>
+                <h4 className="font-bold">Shipping/Fulfillment</h4>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Order Type</p>
+                  <Badge variant="secondary" className="mt-1 uppercase text-[10px]">{order.order_type || 'Manual'}</Badge>
                 </div>
-             </Card>
+                <div>
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Location</p>
+                  <p className="text-sm font-medium">{activeStore?.name || 'Main Terminal'}</p>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
 
@@ -194,7 +196,7 @@ export function OrderDetail() {
         <div className="space-y-8">
           <Card className="p-8 space-y-6" variant="elevated">
             <h3 className="font-bold text-xl mb-4">Summary</h3>
-            
+
             <div className="space-y-4">
               <div className="flex items-center justify-between text-sm py-3 border-b border-outline-variant/10">
                 <div className="flex items-center gap-2 text-on-surface-variant font-medium">
@@ -231,66 +233,66 @@ export function OrderDetail() {
                 <span className="text-3xl font-mono font-extrabold tracking-tighter">{formatCurrency(totalAmount, { currencySymbol })}</span>
               </div>
             </div>
-            
+
             {order.cash_received !== undefined && (
               <div className="bg-surface-container-low p-4 rounded-xl space-y-2">
-                 <div className="flex justify-between text-xs font-bold text-on-surface-variant uppercase tracking-widest">
-                    <span>Cash Received</span>
-                    <span className="font-mono">{formatCurrency(order.cash_received, { currencySymbol })}</span>
-                 </div>
-                 <div className="flex justify-between text-xs font-bold text-primary uppercase tracking-widest border-t border-outline-variant/10 pt-2">
-                    <span>Change Given</span>
-                    <span className="font-mono">{formatCurrency(order.change || 0, { currencySymbol })}</span>
-                 </div>
+                <div className="flex justify-between text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                  <span>Cash Received</span>
+                  <span className="font-mono">{formatCurrency(order.cash_received, { currencySymbol })}</span>
+                </div>
+                <div className="flex justify-between text-xs font-bold text-primary uppercase tracking-widest border-t border-outline-variant/10 pt-2">
+                  <span>Change Given</span>
+                  <span className="font-mono">{formatCurrency(order.change || 0, { currencySymbol })}</span>
+                </div>
               </div>
             )}
           </Card>
 
           {/* Receipt Print Area (Visible only when printing) */}
           <div className="hidden print:block w-full text-black p-8 font-mono text-sm">
-             <div className="text-center mb-6 pb-6 border-b border-black">
-                <h1 className="text-2xl font-bold">MINIMART PRO</h1>
-                <p>{activeStore?.address || 'Terminal #04'}</p>
-                <p>Order {order.order_number}</p>
-                <p>{new Date(order.created_at).toLocaleString()}</p>
-             </div>
-             
-             <div className="space-y-2 mb-6">
-                {order.order_items?.map((item: any) => (
-                   <div key={item.order_item_id} className="flex justify-between">
-                      <span>{item.quantity}x {item.stock_receipt_item?.product?.name}</span>
-                      <span>{formatCurrency(item.total, { currencySymbol })}</span>
-                   </div>
-                ))}
-             </div>
+            <div className="text-center mb-6 pb-6 border-b border-black">
+              <h1 className="text-2xl font-bold">MINIMART PRO</h1>
+              <p>{activeStore?.address || 'Terminal #04'}</p>
+              <p>Order {order.order_number}</p>
+              <p>{new Date(order.created_at).toLocaleString()}</p>
+            </div>
 
-             <div className="border-t border-black pt-4 space-y-1">
-                <div className="flex justify-between font-bold text-lg">
-                   <span>TOTAL</span>
-                   <span>{formatCurrency(totalAmount, { currencySymbol })}</span>
+            <div className="space-y-2 mb-6">
+              {order.order_items?.map((item: any) => (
+                <div key={item.order_item_id} className="flex justify-between">
+                  <span>{item.quantity}x {item.stock_receipt_item?.product?.name}</span>
+                  <span>{formatCurrency(item.total, { currencySymbol })}</span>
                 </div>
-                <div className="flex justify-between">
-                   <span>Method</span>
-                   <span className="uppercase">{order.payment_method}</span>
-                </div>
-                {order.cash_received && (
-                   <>
-                    <div className="flex justify-between">
-                        <span>Received</span>
-                        <span>{formatCurrency(order.cash_received, { currencySymbol })}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span>Change</span>
-                        <span>{formatCurrency(order.change || 0, { currencySymbol })}</span>
-                    </div>
-                   </>
-                )}
-             </div>
-             
-             <div className="mt-10 text-center text-xs">
-                <p>Thank you for shopping with us!</p>
-                <p>Please keep this receipt for your records.</p>
-             </div>
+              ))}
+            </div>
+
+            <div className="border-t border-black pt-4 space-y-1">
+              <div className="flex justify-between font-bold text-lg">
+                <span>TOTAL</span>
+                <span>{formatCurrency(totalAmount, { currencySymbol })}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Method</span>
+                <span className="uppercase">{order.payment_method}</span>
+              </div>
+              {order.cash_received && (
+                <>
+                  <div className="flex justify-between">
+                    <span>Received</span>
+                    <span>{formatCurrency(order.cash_received, { currencySymbol })}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Change</span>
+                    <span>{formatCurrency(order.change || 0, { currencySymbol })}</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="mt-10 text-center text-xs">
+              <p>Thank you for shopping with us!</p>
+              <p>Please keep this receipt for your records.</p>
+            </div>
           </div>
         </div>
       </div>

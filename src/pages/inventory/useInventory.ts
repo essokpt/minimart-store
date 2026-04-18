@@ -137,3 +137,30 @@ export function useProduct(id: string | undefined) {
     enabled: !!id
   });
 }
+export function useProductSearch(query: string, categoryId?: string | null) {
+  return useQuery({
+    queryKey: ['product-search', query, categoryId],
+    queryFn: async () => {
+      let supabaseQuery = supabase
+        .from('products')
+        .select('*, category:product_categories(*)');
+
+      if (query.trim()) {
+        const searchTerm = `%${query.trim()}%`;
+        supabaseQuery = supabaseQuery.or(`name.ilike.${searchTerm},brand.ilike.${searchTerm},model.ilike.${searchTerm},barcode.ilike.${searchTerm}`);
+      }
+
+      if (categoryId && categoryId !== 'all') {
+        supabaseQuery = supabaseQuery.eq('category_id', categoryId);
+      }
+
+      const { data, error } = await supabaseQuery
+        .order('name', { ascending: true })
+        .limit(50);
+
+      if (error) throw error;
+      return data as Product[];
+    },
+    placeholderData: (previousData) => previousData,
+  });
+}

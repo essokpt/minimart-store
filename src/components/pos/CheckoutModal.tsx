@@ -30,10 +30,10 @@ export function CheckoutModal({ isOpen, onClose, total }: CheckoutModalProps) {
   const cart = usePosStore((state) => state.cart);
   const clearCart = usePosStore((state) => state.clearCart);
   const selectedCustomer = usePosStore((state) => state.selectedCustomer);
-  const { checkout, deductStock, createOrderItems } = usePOS();
+  const { checkout, createOrderItems } = usePOS();
 
   const { stores } = useStores();
-  const { settings: loyaltySettings } = useLoyalty();
+  //const { settings: loyaltySettings } = useLoyalty();
 
   const activeStore = stores[0];
   const currencySymbol = activeStore?.currency_symbol || '$';
@@ -104,14 +104,15 @@ export function CheckoutModal({ isOpen, onClose, total }: CheckoutModalProps) {
           const orderItems = cart.map(item => ({
             order_id: newOrder.order_id,
             product_id: item.product_id,
-            product_stock_id: '1c26bf4a-e19f-49dc-abc3-0b864fd9a9e9', // Correctly use the receipt item ID
+            //product_stock_id: item.receipt_item_id, // Correctly use the receipt item ID
             quantity: item.qty,
+            barcode: item.barcode,
             unit_price: item.unit_price,
             total: item.unit_price * item.qty,
 
           }));
-
-          await createOrderItems.mutateAsync(orderItems);
+          console.log('create order items', orderItems);
+          await createOrderItems.mutateAsync(orderItems as any[]);
         }
       }
 
@@ -192,14 +193,14 @@ export function CheckoutModal({ isOpen, onClose, total }: CheckoutModalProps) {
                   <div className="flex flex-col items-center">
                     <p className="text-on-surface-variant font-medium mb-1">Total Amount Due</p>
                     <p className="text-5xl font-mono font-extrabold text-primary tracking-tight">{formatCurrency(total, { currencySymbol })}</p>
-                    {selectedCustomer && loyaltySettings?.enabled && (
+                    {/* {selectedCustomer && loyaltySettings?.enabled && (
                       <div className="mt-4 flex items-center gap-2 bg-primary/5 px-4 py-2 rounded-full border border-primary/10">
                         <Award size={14} className="text-primary" />
                         <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
                           Earns {Math.round(total * loyaltySettings.points_per_currency)} points
                         </span>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 </div>
 
@@ -345,7 +346,7 @@ export function CheckoutModal({ isOpen, onClose, total }: CheckoutModalProps) {
                         </>
                       )}
 
-                      {selectedCustomer && (
+                      {/* {selectedCustomer && (
                         <div className="mt-4 pt-4 border-t border-dash border-black/20 text-center">
                           <p className="text-[10px] font-bold uppercase tracking-widest">Loyalty Points Update</p>
                           <div className="flex justify-between text-[10px] mt-1">
@@ -357,7 +358,7 @@ export function CheckoutModal({ isOpen, onClose, total }: CheckoutModalProps) {
                             <span>{selectedCustomer.loyalty_points + Math.round(completedOrder.total * (loyaltySettings?.points_per_currency || 0))}</span>
                           </div>
                         </div>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 )}

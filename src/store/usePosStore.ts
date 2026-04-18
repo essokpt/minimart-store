@@ -16,6 +16,7 @@ interface PosState {
   addItem: (product: Product) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, delta: number) => void;
+  setQuantity: (productId: string, qty: number) => void;
   setItemDiscount: (productId: string, discount: number, type?: 'percentage' | 'fixed') => void;
   setOrderDiscount: (discount: number) => void;
   selectCustomer: (customer: Customer | null) => void;
@@ -32,42 +33,55 @@ export const usePosStore = create<PosState>((set, get) => ({
   orderDiscount: 0,
   heldOrders: [],
   selectedCustomer: null,
-  
+
   addItem: (product) => set((state) => {
-    console.log('Adding product to cart:', product);
     // Find matching item by BOTH product_id AND receipt_item_id to ensure batch accuracy
-    const existing = state.cart.find((item) => 
-      item.product_id === product.product_id && 
+    const existing = state.cart.find((item) =>
+      item.product_id === product.product_id &&
       (item as any).receipt_item_id === (product as any).receipt_item_id
     );
 
     if (existing) {
+      const maxStock = product.stock_value ?? Infinity;
+      if (existing.qty >= maxStock) return state;
+
       return {
-        cart: state.cart.map((item) => 
+        cart: state.cart.map((item) =>
           (item.product_id === product.product_id && (item as any).receipt_item_id === (product as any).receipt_item_id)
-            ? { ...item, qty: item.qty + 1 } : item
+            ? { ...item, qty: Math.min(maxStock, item.qty + 1) } : item
         )
       };
     }
     return { cart: [...state.cart, { ...product, qty: 1 }] };
   }),
-  
+
   removeItem: (productId) => set((state) => ({
     cart: state.cart.filter((item) => item.product_id !== productId)
   })),
-  
+
   updateQuantity: (productId, delta) => set((state) => ({
     cart: state.cart.map((item) => {
       if (item.product_id === productId) {
-        const newQty = Math.max(0, item.qty + delta);
-        return { ...item, qty: newQty };
+        let newQty = item.qty + delta;
+        const maxStock = item.stock_value ?? Infinity;
+        return { ...item, qty: Math.min(maxStock, Math.max(1, newQty)) };
       }
       return item;
-    }).filter((item) => item.qty > 0)
+    })
   })),
-  
+
+  setQuantity: (productId, qty) => set((state) => ({
+    cart: state.cart.map((item) => {
+      if (item.product_id === productId) {
+        const maxStock = item.stock_value ?? Infinity;
+        return { ...item, qty: Math.min(maxStock, Math.max(1, qty)) };
+      }
+      return item;
+    })
+  })),
+
   setItemDiscount: (productId, discount, type = 'percentage') => set((state) => ({
-    cart: state.cart.map((item) => 
+    cart: state.cart.map((item) =>
       item.product_id === productId ? { ...item, discount, discount_type: type } : item
     )
   })),
@@ -106,7 +120,7 @@ export const usePosStore = create<PosState>((set, get) => ({
   selectCustomer: (customer) => set({ selectedCustomer: customer }),
 
   clearCart: () => set({ cart: [], orderDiscount: 0, selectedCustomer: null }),
-  
+
   cartTotal: () => {
     const { cart, orderDiscount } = get();
     const subtotal = cart.reduce((total, item) => {
@@ -120,10 +134,10 @@ export const usePosStore = create<PosState>((set, get) => ({
       }
       return total + (itemPrice * item.qty);
     }, 0);
-    
+
     return subtotal * (1 - orderDiscount / 100);
   },
-  
+
   cartItemCount: () => {
     const { cart } = get();
     return cart.reduce((count, item) => count + item.qty, 0);

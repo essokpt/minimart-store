@@ -113,7 +113,7 @@ export interface Order {
   change?: number;
   created_at?: string;
   amount?: number;
-  status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Completed';
+  status: 'Confirmed' | 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Completed';
 }
 
 export interface OrderItem {
@@ -121,6 +121,9 @@ export interface OrderItem {
   product_id: string;
   order_id: string;
   product_stock_id: string;
+  barcode: string;
+  sku: string;
+  name: string;
   quantity: number;
   unit_price: number;
   discount?: number;
