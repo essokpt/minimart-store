@@ -26,7 +26,7 @@ export function RevenueReport({ period, customStartDate, customEndDate }: Revenu
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="p-6" variant="elevated">
+        <Card className="p-6" variant="elevated" data-report-summary>
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
               Total Revenue
@@ -40,7 +40,7 @@ export function RevenueReport({ period, customStartDate, customEndDate }: Revenu
           </p>
         </Card>
 
-        <Card className="p-6" variant="elevated">
+        <Card className="p-6" variant="elevated" data-report-summary>
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
               Avg Order Value
@@ -54,7 +54,7 @@ export function RevenueReport({ period, customStartDate, customEndDate }: Revenu
           </p>
         </Card>
 
-        <Card className="p-6" variant="elevated">
+        <Card className="p-6" variant="elevated" data-report-summary>
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
               Transactions

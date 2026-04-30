@@ -8,6 +8,7 @@ import { useSidebar } from '../../contexts/SidebarContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { NotificationCenter } from './NotificationCenter';
 
 export function Sidebar() {
   const location = useLocation();
@@ -50,6 +51,7 @@ export function Sidebar() {
         { labelKey: 'sidebar.profile', path: '/profile' },
         { labelKey: 'sidebar.store_info', path: '/inventory/info' },
         { labelKey: 'sidebar.loyalty', path: '/settings/loyalty' },
+        { labelKey: 'sidebar.notifications', path: '/settings/notifications' },
       ]
     },
   ];
@@ -224,10 +226,7 @@ export function Topbar() {
           >
             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
           </button>
-          <button className="p-2.5 text-on-surface-variant/60 hover:bg-surface-container rounded-sm transition-colors relative">
-            <Bell size={20} />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-error rounded-full border-2 border-surface"></span>
-          </button>
+          <NotificationCenter />
           <button className="p-2.5 text-on-surface-variant/60 hover:bg-surface-container rounded-sm transition-colors">
             <HelpCircle size={20} />
           </button>

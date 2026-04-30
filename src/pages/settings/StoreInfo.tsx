@@ -35,8 +35,8 @@ export function StoreInfo() {
       address: '',
       phone: '',
       status: 'Active',
-      currency_symbol: '$',
-      tax_rate: 0
+      //currency_symbol: '$',
+      //tax_rate: 0
     }
   });
 
@@ -49,8 +49,8 @@ export function StoreInfo() {
         address: activeStore.address || '',
         phone: activeStore.phone || '',
         status: (activeStore.status as any) || 'Active',
-        currency_symbol: activeStore.currency_symbol || '$',
-        tax_rate: activeStore.tax_rate || 0
+        //currency_symbol: activeStore.currency_symbol || '$',
+        // tax_rate: activeStore.tax_rate || 0
       });
     }
   }, [activeStore]);
@@ -58,9 +58,9 @@ export function StoreInfo() {
   const handleSave = async (values: StoreInput) => {
     if (!activeStore) return;
     try {
-      await updateStore.mutateAsync({ 
-        id: activeStore.store_id, 
-        updates: values 
+      await updateStore.mutateAsync({
+        id: activeStore.store_id,
+        updates: values
       });
       setIsSuccess(true);
       setTimeout(() => setIsSuccess(false), 3000);

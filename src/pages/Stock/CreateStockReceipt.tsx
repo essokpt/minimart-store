@@ -35,6 +35,7 @@ import { productSchema, StockReceipt, stockReceiptSchema } from '../../lib/valid
 import { InputField, NumberField, SelectField, TextareaField } from '../../components/form/FormField';
 import { ProductForm } from '../../components/form/ProductForm';
 import { useStock } from './useStock';
+import { useNotificationStore } from '../../store/useNotificationStore';
 import { Route, Router, useRoutes } from 'react-router-dom';
 
 interface ReceiptItem {
@@ -50,11 +51,14 @@ interface ReceiptItem {
   area: string;
   lot_number?: string;
   expiry_date?: string;
+  isAutoSelected?: boolean;
+  existingLocations?: any[];
 }
 
 export function CreateStockReceipt() {
   const { createStockReceipt, createStockReceiptItem, stockArea, getProductLocations } = useStock();
-  const { products, createProduct, uploadImage } = useInventory();
+  const { addNotification } = useNotificationStore();
+  const { products, createProduct, updateProduct, uploadImage } = useInventory();
   const { categories } = useCategories();
   const [location, setLocation] = useState({ area_id: '', name: '' });
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -63,6 +67,7 @@ export function CreateStockReceipt() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [editingItem, setEditingItem] = useState<ReceiptItem | null>(null);
+  const [productLocationsMap, setProductLocationsMap] = useState<Record<string, any[]>>({});
   //const [supplier, setSupplier] = useState('');
   //const [deliveryNote, setDeliveryNote] = useState('');
   // Form states
@@ -120,6 +125,7 @@ export function CreateStockReceipt() {
     fetchLocations();
   }, [selectedProduct?.product_id]);
 
+
   // const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
   //   const file = e.target.files?.[0];
   //   if (!file) return;
@@ -167,7 +173,28 @@ export function CreateStockReceipt() {
     ).slice(0, 8)
     : [];
 
-  const addItem = (product: Product) => {
+  useEffect(() => {
+    const fetchAreas = async () => {
+      const missingIds = filteredProducts
+        .map(p => p.product_id)
+        .filter(id => !productLocationsMap[id]);
+
+      if (missingIds.length === 0) return;
+
+      const newLocations = { ...productLocationsMap };
+      await Promise.all(missingIds.map(async id => {
+        const locs = await getProductLocations(id);
+        newLocations[id] = locs;
+      }));
+      setProductLocationsMap(newLocations);
+    };
+
+    if (filteredProducts.length > 0) {
+      fetchAreas();
+    }
+  }, [filteredProducts]);
+
+  const addItem = async (product: Product) => {
     const existingIndex = receivedItems.findIndex(item => item.id === product.product_id);
 
     if (existingIndex > -1) {
@@ -176,18 +203,37 @@ export function CreateStockReceipt() {
       updatedItems[existingIndex].receivedQty += 1;
       setReceivedItems(updatedItems);
     } else {
+      const locations = await getProductLocations(product.product_id);
+      const existingArea = locations.length > 0 ? locations[0] : null;
+
+      let productBarcode = product.barcode;
+      if (!productBarcode) {
+        productBarcode = '885' + Date.now().toString().slice(-10); // Standard-length auto barcode
+        try {
+          await updateProduct.mutateAsync({
+            id: product.product_id,
+            updates: { barcode: productBarcode }
+          });
+          addNotification('success', `Assigned new barcode: ${productBarcode}`);
+        } catch (err) {
+          console.error('Failed to auto-update barcode:', err);
+        }
+      }
+
       // Add as new item
       setReceivedItems([...receivedItems, {
         id: product.product_id,
         name: product.name,
         sku: '',
-        barcode: product.barcode || barcode,
+        barcode: productBarcode || barcode,
         currentStock: product.stock_value || 0,
         image: product.image_url || product.image || '',
         receivedQty: 1,
         unitCost: product.cost_price || 0,
-        location_name: '',
-        area: '',
+        location_name: existingArea ? existingArea.name : '',
+        area: existingArea ? existingArea.area_id : '',
+        isAutoSelected: !!existingArea,
+        existingLocations: locations,
       }]);
     }
 
@@ -354,6 +400,12 @@ export function CreateStockReceipt() {
                               <div className="flex items-center gap-2 mt-1">
                                 <span className="text-[10px] text-on-surface-variant font-mono bg-surface-container rounded px-1.5 py-0.5">{product.barcode || 'No Barcode'}</span>
                                 <span className="text-[10px] text-on-surface-variant/60 font-medium whitespace-nowrap">Stock: {product.stock_value || 0}</span>
+                                {productLocationsMap[product.product_id]?.length > 0 && (
+                                  <div className="flex items-center gap-1 text-[10px] text-primary font-bold bg-primary/10 rounded px-1.5 py-0.5 ml-auto">
+                                    <MapPin size={10} />
+                                    <span>{productLocationsMap[product.product_id][0].name}</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <Plus size={18} className="text-primary opacity-0 group-hover:opacity-100 transition-all mr-2 shrink-0 scale-90 group-hover:scale-100" />
@@ -421,9 +473,16 @@ export function CreateStockReceipt() {
                         />
                       </div>
                     </td>
-                    <td className="px-8 py-5">
+                    <td className="px-8 py-5 relative">
+                      {item.existingLocations && item.existingLocations.length > 0 && (
+                        <div className="absolute top-2 left-8 flex items-center gap-1.5">
+                          <Badge variant="primary" className="text-[7px] py-0 px-1 font-black uppercase tracking-tighter animate-pulse bg-primary/20 text-primary border-none">
+                            Existing: {item.existingLocations.map(l => l.name).join(', ')}
+                          </Badge>
+                        </div>
+                      )}
                       <select
-                        className="w-full max-w-[200px] bg-surface-container-low border border-outline-variant/10 rounded-lg px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer appearance-none"
+                        className="w-full max-w-[200px] bg-surface-container-low border border-outline-variant/10 rounded-lg px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer appearance-none mt-2"
                         value={item.area}
                         onChange={(e) => {
                           const id = e.target.value;

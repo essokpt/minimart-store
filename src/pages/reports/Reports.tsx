@@ -95,7 +95,10 @@ export function Reports() {
             <Settings size={18} />
             Custom Report
           </Button>
-          <ExportButton elementId="report-content" />
+          <ExportButton 
+            elementId="report-content" 
+            title={`${activeReport.charAt(0).toUpperCase() + activeReport.slice(1)} Report`} 
+          />
         </div>
       </header>
 

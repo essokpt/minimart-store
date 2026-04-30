@@ -160,3 +160,28 @@ export interface Customer {
   loyalty_points: number;
   created_at?: string;
 }
+
+export type NotificationType = 'expiry' | 'low_stock' | 'system' | 'order';
+export type NotificationPriority = 'low' | 'medium' | 'high' | 'critical';
+export type NotificationStatus = 'unread' | 'read' | 'archived';
+
+export interface Notification {
+  id: string;
+  user_id?: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  priority: NotificationPriority;
+  status: NotificationStatus;
+  metadata?: any;
+  created_at: string;
+}
+
+export interface NotificationSetting {
+  id: string;
+  type: NotificationType;
+  enabled: boolean;
+  parameter: number; // e.g., days before expiry, or stock threshold
+  priority: NotificationPriority;
+  updated_at?: string;
+}

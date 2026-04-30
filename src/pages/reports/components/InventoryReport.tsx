@@ -13,7 +13,7 @@ export function InventoryReport() {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-6" variant="elevated">
+        <Card className="p-6" variant="elevated" data-report-summary>
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
               Total Products
@@ -27,7 +27,7 @@ export function InventoryReport() {
           </p>
         </Card>
 
-        <Card className="p-6" variant="elevated">
+        <Card className="p-6" variant="elevated" data-report-summary>
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
               Stock Value
@@ -41,7 +41,7 @@ export function InventoryReport() {
           </p>
         </Card>
 
-        <Card className="p-6" variant="elevated">
+        <Card className="p-6" variant="elevated" data-report-summary>
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
               Low Stock
@@ -55,7 +55,7 @@ export function InventoryReport() {
           </p>
         </Card>
 
-        <Card className="p-6" variant="elevated">
+        <Card className="p-6" variant="elevated" data-report-summary>
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
               Out of Stock

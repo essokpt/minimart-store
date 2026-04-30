@@ -64,8 +64,8 @@ export const storeSchema = z.object({
   address: z.string().optional().or(z.literal('')),
   phone: z.string().optional().or(z.literal('')),
   status: z.enum(['Active', 'Inactive']).optional(),
-  currency_symbol: z.string().optional().or(z.literal('')),
-  tax_rate: z.number().or(z.string().transform((v) => parseFloat(v) || 0)).optional()
+  //currency_symbol: z.string().optional().or(z.literal('')),
+  //tax_rate: z.number().or(z.string().transform((v) => parseFloat(v) || 0)).optional()
 });
 
 export const StockReceiptitemsSchema = z.object({

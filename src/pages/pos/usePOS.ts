@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { Order, OrderItem } from '../../types';
 import { useNotificationStore } from '../../store/useNotificationStore';
+import { Stock_receiptitems } from '../../types';
 
 export function usePOS() {
   const queryClient = useQueryClient();
@@ -13,24 +14,25 @@ export function usePOS() {
     // Note: We use .or to check multiple potential barcode/identifier fields
     const { data: receiptItem, error: rError } = await supabase
       .from('stock_receipt_items')
+      //.from('products')
       .select('*, product:products(*, category:product_categories(*))')
-      .or(`sku.eq.${barcode},barcode.eq.${barcode}`)
+      .or(`barcode.eq.${barcode}`)
       .eq('status', 'in-stock')
       .gt('quantity', 0)
-      .maybeSingle();
+    //.maybeSingle();
 
-    if (receiptItem && receiptItem.product) {
+    console.log('find product:', barcode, receiptItem)
+    const item: any = receiptItem?.length ? receiptItem[0] : null;
+    if (item) {
       return {
-        ...receiptItem.product,
-        receipt_item_id: receiptItem.receipt_item_id, // Keep track of which receipt item it came from
-        sku: receiptItem.sku,
-        lot_number: receiptItem.lot_number
+        ...item.product,
+        receipt_item_id: item.receipt_item_id, // Keep track of which receipt item it came from
+        sku: item.sku,
+        lot_number: item.lot_number
       };
-    }
-
+    };
     return null;
-  };
-
+  }
   // Mutation to deduct stock after sale
   const deductStock = useMutation({
     mutationFn: async (items: { product_id: string; qty: number; receipt_item_id?: number }[]) => {

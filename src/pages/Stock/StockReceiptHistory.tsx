@@ -197,8 +197,14 @@ export function StockReceiptHistory() {
                     </div>
                   </td>
                   <td className="px-8 py-5">
-                    <span className="text-sm text-on-surface-variant font-medium">{record.created_at}</span>
-                  </td>
+                    <div className="space-y-0.5">
+                      <p className="text-xs text-on-surface font-medium">
+                        {record.created_at ? new Date(record.created_at).toLocaleDateString() : 'N/A'}
+                      </p>
+                      <p className="text-[10px] text-on-surface-variant/60 font-mono">
+                        {record.created_at ? new Date(record.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </p>
+                    </div>                  </td>
                   <td className="px-8 py-5">
                     <span className="text-sm font-bold text-on-surface">{record.status}</span>
                   </td>

@@ -90,7 +90,7 @@ export function POS() {
         } else {
           addNotification('error', `No product found matching barcode: ${barcode}`);
         }
-        console.log("scan cart", cart);
+        console.log("scan cart", product);
 
       }
     }

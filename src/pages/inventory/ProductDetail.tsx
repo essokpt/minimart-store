@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { ArrowLeft, Package, Edit2, Archive, Copy, Barcode, TrendingUp, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Package, Edit2, Archive, Copy, Barcode, TrendingUp, AlertTriangle, MapPin } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -11,9 +11,10 @@ import { useCategories } from './useCategories';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatCurrency } from '../../lib/formatters';
 import { useStores } from '../Stock/useStores';
+import { useStock } from '../Stock/useStock';
 
 export function ProductDetail() {
   const { id } = useParams();
@@ -29,6 +30,19 @@ export function ProductDetail() {
   const [adjustmentType, setAdjustmentType] = useState<'Add' | 'Remove'>('Add');
   const [adjustmentValue, setAdjustmentValue] = useState<number>(0);
   const [editProduct, setEditProduct] = useState<any>(null);
+
+  const { getProductLocations } = useStock();
+  const [productLocations, setProductLocations] = useState<{ area_id: string, name: string, quantity: number }[]>([]);
+
+  useEffect(() => {
+    const fetchLocations = async () => {
+      if (id) {
+        const locs = await getProductLocations(id);
+        setProductLocations(locs);
+      }
+    };
+    fetchLocations();
+  }, [id, getProductLocations]);
 
   const handleAdjustStock = async () => {
     if (!product || adjustmentValue <= 0) return;
@@ -198,23 +212,40 @@ export function ProductDetail() {
 
           <Card className="p-0 overflow-hidden bg-surface-container-lowest border-outline-variant/20">
             <div className="p-6 border-b border-outline-variant/10 flex items-center justify-between">
-              <h3 className="text-xl font-headline font-bold">Recent History</h3>
+              <h3 className="text-xl font-headline font-bold">Stock History</h3>
               <Button variant="ghost" size="sm">View All Logs</Button>
             </div>
             <table className="w-full text-left text-sm">
+              <thead className="bg-surface-container-low text-[10px] font-black uppercase tracking-widest text-on-surface-variant/50 border-b border-outline-variant/10">
+                <tr>
+                  <th className="px-6 py-4">Storage Area</th>
+                  <th className="px-6 py-4 text-right">In Stock</th>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-outline-variant/10">
-                <tr className="hover:bg-surface-container-low/50 transition-colors">
-                  <td className="px-6 py-4 font-mono text-on-surface-variant">Today, 09:42 AM</td>
-                  <td className="px-6 py-4"><Badge variant="primary">Sale</Badge></td>
-                  <td className="px-6 py-4 font-medium">-2 Units via POS Terminal 04</td>
-                  <td className="px-6 py-4 text-right font-bold text-on-surface">Alex R.</td>
-                </tr>
-                <tr className="hover:bg-surface-container-low/50 transition-colors">
-                  <td className="px-6 py-4 font-mono text-on-surface-variant">Yesterday, 14:15 PM</td>
-                  <td className="px-6 py-4"><Badge variant="secondary">Restock</Badge></td>
-                  <td className="px-6 py-4 font-medium">+48 Units via Warehouse Delivery</td>
-                  <td className="px-6 py-4 text-right font-bold text-on-surface">System</td>
-                </tr>
+                {productLocations.length > 0 ? (
+                  productLocations.map(loc => (
+                    <tr key={loc.area_id} className="hover:bg-surface-container-low/50 transition-colors">
+                      <td className="px-6 py-4 font-bold text-on-surface flex items-center gap-2">
+                        <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary">
+                          <MapPin size={16} />
+                        </div>
+                        {loc.name}
+                      </td>
+                      <td className="px-6 py-4 text-right font-mono font-bold text-on-surface">
+                        <Badge variant="secondary" className="px-3 py-1 text-sm bg-surface-container text-on-surface border-outline-variant/20">
+                          {loc.quantity} Units
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={2} className="px-6 py-12 text-center text-on-surface-variant font-medium">
+                      No stock locations recorded for this product.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </Card>

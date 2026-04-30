@@ -29,6 +29,7 @@ import { Suppliers } from './pages/inventory/Suppliers';
 import { ToastContainer } from './components/ui/Toast';
 import { AreaDetail } from './pages/Stock/AreaDetail';
 import { StoreInfo } from './pages/settings/StoreInfo';
+import { NotificationsSettings } from './pages/settings/NotificationsSettings';
 
 function AppContent() {
   const location = useLocation();
@@ -73,6 +74,7 @@ function AppContent() {
               <Route path="/stock-areas/:id" element={<ProtectedRoute><AreaDetail /></ProtectedRoute>} />
 
               <Route path="/settings/loyalty" element={<ProtectedRoute><Loyalty /></ProtectedRoute>} />
+              <Route path="/settings/notifications" element={<ProtectedRoute><NotificationsSettings /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
 
               {/* Fallback to dashboard */}

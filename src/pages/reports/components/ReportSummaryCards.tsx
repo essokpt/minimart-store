@@ -64,7 +64,7 @@ export function ReportSummaryCards({
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map((card) => (
-        <Card key={card.label} className="p-6" variant="elevated">
+        <Card key={card.label} className="p-6" variant="elevated" data-report-summary>
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
               {card.label}
